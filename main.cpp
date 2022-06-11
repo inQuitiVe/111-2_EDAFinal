@@ -6,6 +6,7 @@
 
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -166,7 +167,7 @@ int main(int argc, char* argv[]){
 
     if(mlist.is_open()){
         string cur_state = "INIT";
-        vector<string> words;
+        vector<string> words, sec_words;
         string first_line, second_line;
         while(getline(mlist, line)){
             word = line.substr(0, line.find(" ")); // first word of the sentense
@@ -183,9 +184,13 @@ int main(int argc, char* argv[]){
                 movable_macro.reserve(num_components); // reserving space for # movable macros
                 for(int i=0; i<num_components; ++i){
                     getline(mlist, first_line);
-                    getline(mlist, second_line); // no need to use second_line's information
+                    getline(mlist, second_line);
                     splitStringToWords(first_line, words);
+                    splitStringToWords(second_line, sec_words);
                     macro_dict[words[4]].movable = true; // update bool movable from false to true
+                    macro_dict[words[4]].pos_x = stof(sec_words[9]);  // update pos_x
+                    macro_dict[words[4]].pos_y = stof(sec_words[10]); // update pos_y
+                    // need to update the orientation ??
                     movable_macro.push_back(words[4]);
                 }
                 break; // end of reading mlist
@@ -199,10 +204,11 @@ int main(int argc, char* argv[]){
     
     /********** determine final Macro location **********/
 
-    /********** write output file **********/
+/********** write output file **********/
     ifstream mlist2(argv[4]);
     ofstream dmp(argv[6]);
     if(mlist2.is_open() && dmp.is_open()){
+        dmp << fixed << setprecision(0);
         string cur_state = "INIT";
         vector<string> words, sec_words;
         string first_line, second_line;
@@ -230,9 +236,9 @@ int main(int argc, char* argv[]){
 
                     // pos_x is at sec_words[9], pos_y is at sec_words[10]
                     // orientation is at sec_words[12]
-                    for(int j=0; j<7; ++j) // 6 spaces and "+"
-                        dmp << sec_words[j];
-                    for(int j=7; j<14; ++j){ // rest of the sentence
+                    for(int j=0; j<5; ++j) // 5 spaces
+                        dmp << " ";
+                    for(int j=6; j<14; ++j){ // rest of the sentence
                         dmp << " ";
                         if(j==9)
                             dmp << macro_dict[movable_macro[i]].pos_x; // pos_x
