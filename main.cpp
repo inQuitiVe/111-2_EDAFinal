@@ -1,6 +1,6 @@
 // main.cpp for EDA final project
 // author: Eric, Cody, Joey
-// date: 1989/06/04
+// date: 2022/06
 // usage: ./DMP caseOO.v caseOO.lef caseOO.def caseOO.mlist caseOO.txt caseOO.dmp
 // argv       0        1          2          3            4          5          6
 
