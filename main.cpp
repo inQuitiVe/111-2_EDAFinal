@@ -200,6 +200,70 @@ int main(int argc, char* argv[]){
     /********** determine final Macro location **********/
 
     /********** write output file **********/
+    ifstream mlist2(argv[4]);
+    ofstream dmp(argv[6]);
+    if(mlist2.is_open() && dmp.is_open()){
+        string cur_state = "INIT";
+        vector<string> words, sec_words;
+        string first_line, second_line;
+        while(getline(mlist2, line)){
+            word = line.substr(0, line.find(" ")); // first word of the sentense
+            // switching cur_state
+            if(cur_state == "INIT" && word == "COMPONENTS")
+                cur_state = "COMPONENTS";
+            
+            // do different things according to cur_state
+            if(cur_state == "INIT"){
+                dmp << line << "\n";
+            }else if(cur_state == "COMPONENTS"){
+                dmp << line << "\n"; // COMPONENTS 175 ;
+                for(int i=0; i<num_components; ++i){ // num_components is calculated previously
+                    getline(mlist2, first_line);  // directly wirte same first line to dmp file
+                    dmp << first_line << "\n";
+                    getline(mlist2, second_line); // change position to new calculated and write to dmp file
+                    // splitStringToWords(first_line, words);
+                    splitStringToWords(second_line, sec_words);
+                    
+                    // for(int i=0; i<words.size();++i){
+                    //     cout << i << ": " << words[i] << '\n';
+                    // }
+
+                    // pos_x is at sec_words[9], pos_y is at sec_words[10]
+                    // orientation is at sec_words[12]
+                    for(int j=0; j<7; ++j) // 6 spaces and "+"
+                        dmp << sec_words[j];
+                    for(int j=7; j<14; ++j){ // rest of the sentence
+                        dmp << " ";
+                        if(j==9)
+                            dmp << macro_dict[movable_macro[i]].pos_x; // pos_x
+                        else if(j==10)
+                            dmp << macro_dict[movable_macro[i]].pos_y; // pos_y
+                        else if(j==12){ // orientation
+                            orientation ori = macro_dict[movable_macro[i]].orient;
+                            if(ori == North)
+                                dmp << "N";
+                            else if(ori == FlipNorth)
+                                dmp << "FN";
+                            else if(ori == South)
+                                dmp << "S";
+                            else if(ori == FlipSouth)
+                                dmp << "FS";
+                        }
+                        else
+                            dmp << sec_words[j];
+                    }
+                    dmp << "\n";
+                }
+                break;
+            }
+        }
+        // wirting last few lines
+        while(getline(mlist2, line)){
+            dmp << line << "\n";
+        }
+        mlist2.close();
+        dmp.close();
+    }
 
     return 0;
 }
