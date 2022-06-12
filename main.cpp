@@ -23,12 +23,6 @@ enum orientation{
     FlipSouth
 };
 
-class Macro_type{
-    public:
-    float width_x, width_y;
-    // PIN ;
-};
-
 class Macro{
     public:
         string name; // only for implementing operator== function
@@ -64,17 +58,17 @@ Macro::Macro(string na, float px, float py, bool mov, orientation ori, string mt
 
 Macro::~Macro(){}
     
-class Pin{ // for primary input pins and primary output pins
+class Pin{ // for def's PI and PO and lef's macro pin
   public:
     string name;
-    int pos_x, pos_y;
+    float pos_x, pos_y;
     // orientation ? (not sure if all the orientation would be North in all test cases)
     Pin(){
         name = "none";
-        pos_x = 0;
-        pos_y = 0;
+        pos_x = 0.0;
+        pos_y = 0.0;
     }
-    Pin(string na, int px, int py){
+    Pin(string na, float px, float py){
         name = na;
         pos_x = px;
         pos_y = py;
@@ -83,6 +77,37 @@ class Pin{ // for primary input pins and primary output pins
         return this->name == rhs.name;
     }
     ~Pin(){}
+};
+
+class Macro_type{
+    public:
+    string name;
+    float width_x, width_y;
+    vector<Pin> pin_list;
+    // OBS obstruction, probabaly need it but ignore it for now
+    Macro_type(){
+        name = "none";
+        width_x = 0.0;
+        width_y = 0.0;
+        pin_list.push_back(Pin());
+    }
+    Macro_type(string na){
+        name = na;
+        width_x = 0.0;
+        width_y = 0.0;
+        // pin_list.clear(); // not sure
+    }
+    void setWidth(float wx, float wy){
+        width_x = wx;
+        width_y = wy;
+    }
+    void addPin(Pin pi){
+        pin_list.push_back(pi);
+    }
+    bool operator==(const Macro_type & rhs){
+        return this->name == rhs.name;
+    }
+    ~Macro_type(){};
 };
 
 class Rect{ // a rectangle from (init_x, init_y) to (end_x, end_y)
@@ -140,6 +165,7 @@ int main(int argc, char* argv[]){
     string word;
     unordered_map<string, Macro> macro_dict; 
     unordered_map<string, Pin> pin_dict;
+    unordered_map<string, Macro_type> mctype_dict;
     vector<string> movable_macro;
     Rect diearea(0, 0, 0, 0);
 
@@ -188,7 +214,7 @@ int main(int argc, char* argv[]){
 
                     // if need to use orientation info later
                     // orientaion info at third_words[8]
-                    Pin pi(words[1], stoi(third_words[5]), stoi(third_words[6]));
+                    Pin pi(words[1], stof(third_words[5]), stof(third_words[6]));
                     pin_dict[words[1]] = pi;
                     
                 }
@@ -197,7 +223,6 @@ int main(int argc, char* argv[]){
                 break;
             }
         }
-        // testing
         // cout << pin_dict["FE_RN_2"].pos_x << " " << pin_dict["FE_RN_2"].pos_y << "\n";
 
         def.close();
@@ -250,6 +275,72 @@ int main(int argc, char* argv[]){
             
         }
         mlist.close();
+    }
+
+    if(lef.is_open()){
+        string cur_state = "INIT";
+        vector<string> words, sec_words;
+        string first_line, second_line;
+        string macro_name;
+        bool units_done = false;
+        while(getline(lef, line)){
+            word = line.substr(0, line.find(" ")); // first word of the sentense
+            // switching cur_state
+            if(cur_state == "INIT" && word == "UNITS")
+                cur_state = "UNITS";
+            else if(cur_state =="UNITS" && word == "MACRO")
+                cur_state = "MACRO";
+            
+            // do different things according to cur_state
+            if(cur_state == "INIT"){
+                continue; // do nothing
+            }else if(cur_state == "UNITS"){
+                if(!units_done){ // only do once
+                    getline(lef, line);
+                    splitStringToWords(line, words);
+                    lef_scalar = stoi(words[4]);
+                    // cout << lef_scalar << "\n";
+                    units_done = true;
+                }
+            }else if(cur_state == "MACRO"){
+                splitStringToWords(line, words);
+                string macro_name = words[1];
+                Macro_type mtype(macro_name);
+                while(getline(lef, line)){ // read inside MACRO ... END MACRO
+                    if(line.substr(4, line.find(" ", 4) - 4) == "SIZE"){
+                        splitStringToWords(line, words);
+                        mtype.setWidth(stof(words[5]), stof(words[7]));
+                    }else if(line.substr(4, line.find(" ", 4) - 4) == "PIN"){
+                        string pin_name = line.substr(8, line.find(" ", 8) - 8); // not sure
+                        while(getline(lef, line)){ // read inside PIN ... END PIN
+                            if(line.substr(8, line.find(" ", 8) - 8) == "RECT"){
+                                splitStringToWords(line, words);
+                                // RECT: init_x=words[9], init_y=words[10], end_x=words[11], end_y=words[12]
+                                float mid_x =  (stof(words[9]) + stof(words[11])) / 2.0;
+                                float mid_y = (stof(words[10]) + stof(words[12])) / 2.0;
+                                Pin pi(pin_name, mid_x, mid_y);
+                                // cout << mtype.name << " " << pin_name << " " << mid_x << " " << mid_y << "\n";
+                                mtype.addPin(pi);
+                            }else if(line.substr(8, line.find(" ", 8) - 8) == "END"){
+                                break;
+                            }
+                        }
+                    }else if(line.substr(0, line.find(" ", 0)) == "END"){
+                        mctype_dict[macro_name] = mtype;
+                        getline(lef, line); // read an empty line
+                        break;
+                    }  
+                }
+            }
+            
+        }
+        // testing
+        // cout << mctype_dict["TIEH_X1"].width_x << " " <<  mctype_dict["TIEH_X1"].width_y << "\n";
+        // vector<Pin> test_list = mctype_dict["TIEH_X1"].pin_list;
+        // for(int i=0; i<test_list.size(); ++i){
+        //     cout << test_list[i].name << " " << test_list[i].pos_x << " " << test_list[i].pos_y << "\n";
+        // }
+        lef.close();
     }
 
     if(txt.is_open()){
