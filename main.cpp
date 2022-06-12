@@ -67,7 +67,7 @@ class Pin{
     // net?   
 };
 
-struct Rect{ // a rectangel from (init_x, init_y) to (end_x, end_y)
+struct Rect{ // a rectangle from (init_x, init_y) to (end_x, end_y)
     int init_x, init_y, end_x, end_y;
 };
 
