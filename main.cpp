@@ -55,9 +55,9 @@ Macro::Macro(){
 
 Macro::Macro(string na, float px, float py, bool mov, orientation ori, string mtype){
     name = na;
- ;
-    movable = m   pos_x = px;
-    pos_y = pyov;
+    movable = mov;
+    pos_x = px;
+    pos_y = py;
     orient = ori;
     macro_type = mtype;
 }
@@ -207,8 +207,8 @@ int main(int argc, char* argv[]){
 /********** determine final Macro location **********/
     for (int iteration=0; iteration<ITERATION; iteration++)
         for (unordered_map<string, Macro> :: iterator macro_itr = macro_dict.begin() ; macro_itr != macro_dict.end() ; macro_itr++){
-            int xaccum[4] = [0,0,0,0];
-            int yaccum[4] = [0,0,0,0];
+            int xaccum[4] = {0,0,0,0};
+            int yaccum[4] = {0,0,0,0};
 
 
             for (int i = 0; i < len(macro_itr->second.pins); i++ ){
@@ -227,7 +227,7 @@ int main(int argc, char* argv[]){
 
             int optimal_pos_x = INT_MAX;
             int optimal_pos_y = INT_MAX;
-            string optimal_orient = "N"
+            string optimal_orient = "N";
 
             xaccum[0] /= len(macro_itr->second.pins);
             yaccum[0] /= len(macro_itr->second.pins);
@@ -329,7 +329,7 @@ int main(int argc, char* argv[]){
                 break;
             }
         }
-        // wirting last few lines
+        // writing last few lines
         while(getline(mlist2, line)){
             dmp << line << "\n";
         }
