@@ -64,14 +64,43 @@ Macro::Macro(string na, float px, float py, bool mov, orientation ori, string mt
 
 Macro::~Macro(){}
     
-class Pin{
+class Pin{ // for primary input pins and primary output pins
   public:
+    string name;
     int pos_x, pos_y;
-    // net?   
+    // orientation ? (not sure if all the orientation would be North in all test cases)
+    Pin(){
+        name = "none";
+        pos_x = 0;
+        pos_y = 0;
+    }
+    Pin(string na, int px, int py){
+        name = na;
+        pos_x = px;
+        pos_y = py;
+    }  
+    bool operator==(const Pin & rhs){
+        return this->name == rhs.name;
+    }
+    ~Pin(){}
 };
 
-struct Rect{ // a rectangle from (init_x, init_y) to (end_x, end_y)
-    int init_x, init_y, end_x, end_y;
+class Rect{ // a rectangle from (init_x, init_y) to (end_x, end_y)
+    public:
+        int init_x, init_y, end_x, end_y;
+        Rect(){
+            set(0, 0, 0, 0);
+        }
+        Rect(int inx, int iny, int edx, int edy){
+            set(inx, iny, edx, edy);
+        }
+        ~Rect(){};
+        void set(int inx, int iny, int edx, int edy){
+            init_x = inx;
+            init_y = iny;
+            end_x = edx;
+            end_y = edy;
+        }
 };
 
 // code ref: https://java2blog.com/split-string-space-cpp/#Using_find_and_substr_methods
@@ -93,33 +122,33 @@ int main(int argc, char* argv[]){
         return 0;
     }
 
-    /********** read input files **********/
-    int MAX_DISPLACEMENT = 0;
+    /********** define variables **********/
+    int MAX_DISPLACEMENT;
     const int MAX_SPACING = 0;
     const int MACRO_HOLO = 0;
+    int def_scalar = 0; // UNITS DISTANCE MICRONS
+    int lef_scalar = 0; // DATABASE MICRONS
     int num_macros = 0;
     int num_pins = 0;
     int num_components = 0;
+    ifstream verilog(argv[1]);
     ifstream lef(argv[2]);
     ifstream def(argv[3]);
     ifstream mlist(argv[4]);
-    ifstream txt(argv[5]); 
+    ifstream txt(argv[5]); // case00.txt
     string line;
     string word;
     unordered_map<string, Macro> macro_dict; 
+    unordered_map<string, Pin> pin_dict;
     vector<string> movable_macro;
+    Rect diearea(0, 0, 0, 0);
 
-    if(txt.is_open()){
-        getline(txt, line, ' ');
-        getline(txt, line, ' ');
-        MAX_DISPLACEMENT = stoi(line);
-        txt.close();
-    }
-    
+    /********** read input files **********/
+    // readInputFile(def, def_state);
     if(def.is_open()){
         string cur_state = "INIT";
-        vector<string> words, sec_words;
-        string first_line, second_line;
+        vector<string> words, sec_words, third_words;
+        string first_line, second_line, third_line, fourth_line;
         while(getline(def, line)){
             word = line.substr(0, line.find(" ")); // first word of the sentense
             // switching cur_state
@@ -151,20 +180,26 @@ int main(int argc, char* argv[]){
                 num_pins = stoi(words[1]);
                 for(int i=0; i<num_pins; ++i){
                     getline(def, first_line);
-                    getline(def, second_line);
+                    getline(def, second_line); // no need to use the information
+                    getline(def, third_line);
+                    getline(def, fourth_line); // no need to use the information
                     splitStringToWords(first_line, words);
-                    splitStringToWords(second_line, sec_words);
+                    splitStringToWords(third_line, third_words);
 
-                    // TODO: unfinished part
-                    break;
+                    // if need to use orientation info later
+                    // orientaion info at third_words[8]
+                    Pin pi(words[1], stoi(third_words[5]), stoi(third_words[6]));
+                    pin_dict[words[1]] = pi;
                     
                 }
-                // TODO: unfinished part
-                break; 
+                break; // finishing pin reading
             }else{ // cur_state == "END"
                 break;
             }
         }
+        // testing
+        // cout << pin_dict["FE_RN_2"].pos_x << " " << pin_dict["FE_RN_2"].pos_y << "\n";
+
         def.close();
     }
 
@@ -175,12 +210,26 @@ int main(int argc, char* argv[]){
         while(getline(mlist, line)){
             word = line.substr(0, line.find(" ")); // first word of the sentense
             // switching cur_state
-            if(cur_state == "INIT" && word == "COMPONENTS")
+            if(cur_state == "INIT" && word == "UNITS")
+                cur_state = "UNITS";
+            else if(cur_state =="UNITS" && word == "DIEAREA")
+                cur_state = "DIEAREA";
+            else if(cur_state =="DIEAREA" && word == "COMPONENTS")
                 cur_state = "COMPONENTS";
             
             // do different things according to cur_state
             if(cur_state == "INIT"){
                 continue; // do nothing
+            }else if(cur_state == "UNITS"){
+                splitStringToWords(line, words);
+                if(words.size() > 1){
+                    def_scalar = stoi(words[3]);
+                }
+            }else if(cur_state == "DIEAREA"){
+                splitStringToWords(line, words);
+                if(words.size() > 1){
+                    diearea.set(stoi(words[2]), stoi(words[3]), stoi(words[6]), stoi(words[7]));
+                }
             }else if(cur_state == "COMPONENTS"){
                 splitStringToWords(line, words);
                 num_components = stoi(words[1]);
@@ -198,12 +247,24 @@ int main(int argc, char* argv[]){
                 }
                 break; // end of reading mlist
             }
+            
         }
         mlist.close();
+    }
+
+    if(txt.is_open()){
+        string line;
+        getline(txt, line, ' ');
+        getline(txt, line, ' ');
+        MAX_DISPLACEMENT = stoi(line);
+        MAX_DISPLACEMENT *= def_scalar; // change to the same unit
+        // cout << MAX_DISPLACEMENT;
+        txt.close();
     }
     
 
 /********** force-based approach **********/
+
 /********** determine final Macro location **********/
     for (int iteration=0; iteration<ITERATION; iteration++)
         for (unordered_map<string, Macro> :: iterator macro_itr = macro_dict.begin() ; macro_itr != macro_dict.end() ; macro_itr++){
@@ -270,7 +331,7 @@ int main(int argc, char* argv[]){
 
 
 
-/********** write output file **********/
+    /********** write output file **********/
     ifstream mlist2(argv[4]);
     ofstream dmp(argv[6]);
     if(mlist2.is_open() && dmp.is_open()){
@@ -293,7 +354,6 @@ int main(int argc, char* argv[]){
                     getline(mlist2, first_line);  // directly wirte same first line to dmp file
                     dmp << first_line << "\n";
                     getline(mlist2, second_line); // change position to new calculated and write to dmp file
-                    // splitStringToWords(first_line, words);
                     splitStringToWords(second_line, sec_words);
                     
                     // for(int i=0; i<words.size();++i){
