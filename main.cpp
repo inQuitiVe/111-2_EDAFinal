@@ -10,6 +10,9 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <limits>
+
+#define ITERATION 10
 
 using namespace std;
 
@@ -52,9 +55,9 @@ Macro::Macro(){
 
 Macro::Macro(string na, float px, float py, bool mov, orientation ori, string mtype){
     name = na;
-    pos_x = px;
-    pos_y = py;
-    movable = mov;
+ ;
+    movable = m   pos_x = px;
+    pos_y = pyov;
     orient = ori;
     macro_type = mtype;
 }
@@ -200,9 +203,72 @@ int main(int argc, char* argv[]){
     }
     
 
-    /********** force-based approach **********/
-    
-    /********** determine final Macro location **********/
+/********** force-based approach **********/
+/********** determine final Macro location **********/
+    for (int iteration=0; iteration<ITERATION; iteration++)
+        for (unordered_map<string, Macro> :: iterator macro_itr = macro_dict.begin() ; macro_itr != macro_dict.end() ; macro_itr++){
+            int xaccum[4] = [0,0,0,0];
+            int yaccum[4] = [0,0,0,0];
+
+
+            for (int i = 0; i < len(macro_itr->second.pins); i++ ){
+                unordered_map<string, Macro> :: iterator pin_itr;
+                unordered_map<string, Macro> :: iterator pin_itr;
+                pin_itr = Pin.find(macro_itr->second.pins.net);
+                xaccum[0]  +=  pin_itr->second.pos_x - macro_itr->second.pins.N.pos_x ;   
+                xaccum[1]  +=  pin_itr->second.pos_x - macro_itr->second.pins.FN.pos_x; 
+                xaccum[2]  +=  pin_itr->second.pos_x - macro_itr->second.pins.S.pos_x ; 
+                xaccum[3]  +=  pin_itr->second.pos_x - macro_itr->second.pins.FS.pos_x; 
+                yaccum[0]  +=  pin_itr->second.pos_y - macro_itr->second.pins.N.pos_y ;   
+                yaccum[1]  +=  pin_itr->second.pos_y - macro_itr->second.pins.FN.pos_y; 
+                yaccum[2]  +=  pin_itr->second.pos_y - macro_itr->second.pins.S.pos_y ; 
+                yaccum[3]  +=  pin_itr->second.pos_y - macro_itr->second.pins.FS.pos_y;                                                                                                                                                                    = macro_itr->second.pins[i].pos_x + macro_itr->second.pos_x;
+            }
+
+            int optimal_pos_x = INT_MAX;
+            int optimal_pos_y = INT_MAX;
+            string optimal_orient = "N"
+
+            xaccum[0] /= len(macro_itr->second.pins);
+            yaccum[0] /= len(macro_itr->second.pins);
+            if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[0]-init_pos_x) + abs(yaccum[0]-init_pos_y))){
+                optimal_pos_x = xaccum[0];
+                optimal_orient = "N";
+            }
+            xaccum[1] /= len(macro_itr->second.pins);
+            yaccum[1] /= len(macro_itr->second.pins);
+            if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[1]-init_pos_x) + abs(yaccum[1]-init_pos_y))){
+                optimal_pos_x = xaccum[1];
+                optimal_orient = "FN";
+            }
+            xaccum[2] /= len(macro_itr->second.pins);
+            yaccum[2] /= len(macro_itr->second.pins);
+            if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[2]-init_pos_x) + abs(yaccum[2]-init_pos_y))){
+                optimal_pos_x = xaccum[2];
+                optimal_orient = "S";
+            }
+            xaccum[3] /= len(macro_itr->second.pins);
+            yaccum[3] /= len(macro_itr->second.pins);
+            if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[3]-init_pos_x) + abs(yaccum[3]-init_pos_y))){
+                optimal_pos_x = xaccum[3];
+                optimal_orient = "FS";
+            }
+            
+
+            for (int i=0; i<10; i++){
+                if (macro_itr->second.pos_x == optimal_pos_x && macro_itr->second.pos_y == optimal_pos_y) break;
+                if (abs(optimal_pos_x-macro_itr->second.pos_x) > abs(optimal_pos_x-macro_itr->second.pos_x)){
+                    if(optimal_pos_x > macro_itr->second.pos_x) macro_itr->second.pos_x++;
+                    else macro_itr->second.pos_x--;
+                }
+                else{
+                    if(optimal_pos_y > macro_itr->second.pos_y) macro_itr->second.pos_y++;
+                    else macro_itr->second.pos_y--;
+                }
+            }      
+        }
+
+
 
 /********** write output file **********/
     ifstream mlist2(argv[4]);
