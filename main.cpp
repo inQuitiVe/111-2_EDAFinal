@@ -357,9 +357,9 @@ int main(int argc, char* argv[]){
 /********** force-based approach **********/
 
 /********** determine final Macro location **********/
-    for (int iteration=0; iteration<ITERATION; iteration++)
+    for (int iteration=0; iteration<ITERATION; iteration++){
         for (unordered_map<string, Macro> :: iterator macro_itr = macro_dict.begin() ; macro_itr != macro_dict.end() ; macro_itr++){
-            int xaccum[4] = {0,0,0,0};
+            int xaccum[4] = {0,0,0,0}; //N, FN, S, FS
             int yaccum[4] = {0,0,0,0};
 
 
@@ -419,8 +419,7 @@ int main(int argc, char* argv[]){
                 }
             }      
         }
-
-
+    }
 
     /********** write output file **********/
     ifstream mlist2(argv[4]);
