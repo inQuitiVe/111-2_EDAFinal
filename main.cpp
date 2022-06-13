@@ -11,6 +11,7 @@
 #include <vector>
 #include <unordered_map>
 #include <limits>
+#include <ctype.h> // for isalpha()
 
 #define ITERATION 10
 
@@ -23,91 +24,86 @@ enum orientation{
     FlipSouth
 };
 
-class Macro{
+class Component{
     public:
-        string name; // only for implementing operator== function
+        string name; // only for implementing operator == function
         float pos_x, pos_y;
         bool movable;
         orientation orient;
-        string macro_type;
-        Macro(); // default constructor
-        Macro(string na, float px, float py, bool mov, orientation ori, string mtype);
-        bool operator==(const Macro & rhs){
+        string component_type;
+        Component(){// default constructor
+            name = "none";
+            pos_x = 0.0;
+            pos_y = 0.0;
+            movable = false;
+            orient = North;
+            component_type = "none";
+        }
+        Component(string na, float px, float py, bool mov, orientation ori, string mtype){
+            name = na;
+            pos_x = px;
+            pos_y = py;
+            movable = mov;
+            orient = ori;
+            component_type = mtype;
+        }
+        bool operator==(const Component & rhs){
             return this->name == rhs.name;
         }
-        ~Macro();
+        ~Component(){}
 };
-    
-Macro::Macro(){
-    name = "none";
-    pos_x = 0.0;
-    pos_y = 0.0;
-    movable = false;
-    orient = North;
-    macro_type = "none";
-}
-
-Macro::Macro(string na, float px, float py, bool mov, orientation ori, string mtype){
-    name = na;
-    movable = mov;
-    pos_x = px;
-    pos_y = py;
-    orient = ori;
-    macro_type = mtype;
-}
-
-Macro::~Macro(){}
     
 class Pin{ // for def's PI and PO and lef's macro pin
   public:
     string name;
-    float pos_x, pos_y;
+    vector<pair<float, float>> pos_list; //pos_list[i].first = pos_x, pos_list[i].second = pos_y
     // orientation ? (not sure if all the orientation would be North in all test cases)
     Pin(){
         name = "none";
-        pos_x = 0.0;
-        pos_y = 0.0;
+        pair<float, float> p1(0.0, 0.0);
+        pos_list.push_back(p1);
     }
-    Pin(string na, float px, float py){
+    Pin(string na){
         name = na;
-        pos_x = px;
-        pos_y = py;
     }  
+    void addPinLoc(float px, float py){
+        pair<float, float> p1(px, py);
+        pos_list.push_back(p1);
+    }
     bool operator==(const Pin & rhs){
         return this->name == rhs.name;
     }
     ~Pin(){}
 };
 
-class Macro_type{
+class Component_type{
     public:
     string name;
     float width_x, width_y;
-    vector<Pin> pin_list;
+    // vector<Pin> pin_list;
+    unordered_map<string, Pin> pin_list;
     // OBS obstruction, probabaly need it but ignore it for now
-    Macro_type(){
+    Component_type(){
         name = "none";
         width_x = 0.0;
         width_y = 0.0;
-        pin_list.push_back(Pin());
     }
-    Macro_type(string na){
+    Component_type(string na){
         name = na;
         width_x = 0.0;
         width_y = 0.0;
-        // pin_list.clear(); // not sure
     }
     void setWidth(float wx, float wy){
         width_x = wx;
         width_y = wy;
     }
     void addPin(Pin pi){
-        pin_list.push_back(pi);
+        pin_list[pi.name] = pi;
     }
-    bool operator==(const Macro_type & rhs){
+    bool operator==(const Component_type & rhs){
         return this->name == rhs.name;
     }
-    ~Macro_type(){};
+    ~Component_type(){};
 };
 
 class Rect{ // a rectangle from (init_x, init_y) to (end_x, end_y)
@@ -163,10 +159,10 @@ int main(int argc, char* argv[]){
     ifstream txt(argv[5]); // case00.txt
     string line;
     string word;
-    unordered_map<string, Macro> macro_dict; 
+    unordered_map<string, Component> component_dict; 
     unordered_map<string, Pin> pin_dict;
-    unordered_map<string, Macro_type> mctype_dict;
-    vector<string> movable_macro;
+    unordered_map<string, Component_type> mctype_dict;
+    vector<string> macro;
     Rect diearea(0, 0, 0, 0);
 
     /********** read input files **********/
@@ -190,14 +186,14 @@ int main(int argc, char* argv[]){
                 continue; // do nothing
             }else if(cur_state == "COMPONENTS"){
                 splitStringToWords(line, words);
-                num_macros = stoi(words[1]);
-                for(int i=0; i<num_macros; ++i){
+                num_components = stoi(words[1]);
+                for(int i=0; i<num_components; ++i){
                     getline(def, first_line);
                     getline(def, second_line);
                     splitStringToWords(first_line, words);
                     splitStringToWords(second_line, sec_words);
-                    Macro mac(words[1], stof(sec_words[3]), stof(sec_words[4]), false, North, words[2]);
-                    macro_dict[words[1]] = mac;
+                    Component mac(words[1], stof(sec_words[3]), stof(sec_words[4]), false, North, words[2]);
+                    component_dict[words[1]] = mac;
                 }
                 getline(def, line); // END COMPONENTS
                 getline(def, line); // empty lines
@@ -214,7 +210,8 @@ int main(int argc, char* argv[]){
 
                     // if need to use orientation info later
                     // orientaion info at third_words[8]
-                    Pin pi(words[1], stof(third_words[5]), stof(third_words[6]));
+                    Pin pi(words[1]);
+                    pi.addPinLoc(stof(third_words[5]), stof(third_words[6]));
                     pin_dict[words[1]] = pi;
                     
                 }
@@ -223,7 +220,14 @@ int main(int argc, char* argv[]){
                 break;
             }
         }
-        // cout << pin_dict["FE_RN_2"].pos_x << " " << pin_dict["FE_RN_2"].pos_y << "\n";
+        // testing
+        // cout << "def testing: \n" ;
+        // cout << "num_components: " << num_components << "\n";
+        // cout << component_dict["FE_OFC114571_n176682"].pos_x << " " << component_dict["FE_OFC114571_n176682"].pos_y << "\n";
+        // cout << component_dict["o809057"].pos_x << " " << component_dict["o809057"].pos_y << "\n";
+        // cout << "num_pins: " << num_pins << "\n";
+        // vector<pair<float, float>> pos = pin_dict["FE_RN_2"].pos_list;
+        // cout << pos[0].first << " " << pos[0].second << "\n";
 
         def.close();
     }
@@ -257,23 +261,28 @@ int main(int argc, char* argv[]){
                 }
             }else if(cur_state == "COMPONENTS"){
                 splitStringToWords(line, words);
-                num_components = stoi(words[1]);
-                movable_macro.reserve(num_components); // reserving space for # movable macros
-                for(int i=0; i<num_components; ++i){
+                num_macros = stoi(words[1]);
+                macro.reserve(num_macros); // reserving space for # movable macros
+                for(int i=0; i<num_macros; ++i){
                     getline(mlist, first_line);
                     getline(mlist, second_line);
                     splitStringToWords(first_line, words);
                     splitStringToWords(second_line, sec_words);
-                    macro_dict[words[4]].movable = true; // update bool movable from false to true
-                    macro_dict[words[4]].pos_x = stof(sec_words[9]);  // update pos_x
-                    macro_dict[words[4]].pos_y = stof(sec_words[10]); // update pos_y
+                    component_dict[words[4]].movable = true; // update bool movable from false to true
+                    component_dict[words[4]].pos_x = stof(sec_words[9]);  // update pos_x
+                    component_dict[words[4]].pos_y = stof(sec_words[10]); // update pos_y
                     // need to update the orientation ??
-                    movable_macro.push_back(words[4]);
+                    macro.push_back(words[4]);
                 }
                 break; // end of reading mlist
             }
             
         }
+        // testing
+        // cout << "mlist testing: \n" ;
+        // for(int i =0; i<macro.size(); ++i){
+        //     cout << macro[i] << "\n";
+        // }
         mlist.close();
     }
 
@@ -283,13 +292,14 @@ int main(int argc, char* argv[]){
         string first_line, second_line;
         string macro_name;
         bool units_done = false;
+        bool is_standardCell = true;
         while(getline(lef, line)){
             word = line.substr(0, line.find(" ")); // first word of the sentense
             // switching cur_state
             if(cur_state == "INIT" && word == "UNITS")
                 cur_state = "UNITS";
             else if(cur_state =="UNITS" && word == "MACRO")
-                cur_state = "MACRO";
+                cur_state = "STDCELLS";
             
             // do different things according to cur_state
             if(cur_state == "INIT"){
@@ -302,44 +312,86 @@ int main(int argc, char* argv[]){
                     // cout << lef_scalar << "\n";
                     units_done = true;
                 }
-            }else if(cur_state == "MACRO"){
+            }else if(cur_state == "STDCELLS"){
                 splitStringToWords(line, words);
                 string macro_name = words[1];
-                Macro_type mtype(macro_name);
-                while(getline(lef, line)){ // read inside MACRO ... END MACRO
-                    if(line.substr(4, line.find(" ", 4) - 4) == "SIZE"){
-                        splitStringToWords(line, words);
-                        mtype.setWidth(stof(words[5]), stof(words[7]));
-                    }else if(line.substr(4, line.find(" ", 4) - 4) == "PIN"){
-                        string pin_name = line.substr(8, line.find(" ", 8) - 8); // not sure
-                        while(getline(lef, line)){ // read inside PIN ... END PIN
-                            if(line.substr(8, line.find(" ", 8) - 8) == "RECT"){
-                                splitStringToWords(line, words);
-                                // RECT: init_x=words[9], init_y=words[10], end_x=words[11], end_y=words[12]
-                                float mid_x =  (stof(words[9]) + stof(words[11])) / 2.0;
-                                float mid_y = (stof(words[10]) + stof(words[12])) / 2.0;
-                                Pin pi(pin_name, mid_x, mid_y);
-                                // cout << mtype.name << " " << pin_name << " " << mid_x << " " << mid_y << "\n";
-                                mtype.addPin(pi);
-                            }else if(line.substr(8, line.find(" ", 8) - 8) == "END"){
-                                break;
+                Component_type mtype(macro_name);
+
+                // get an extra line to ensure is reading standard cell or macro
+                getline(lef, line);
+                is_standardCell = isalpha(line[1])? 0:1;
+                
+                if(is_standardCell){
+                    while(getline(lef, line)){ // read inside MACRO ... END MACRO
+                        
+                        if(line.substr(4, line.find(" ", 4) - 4) == "SIZE"){
+                            splitStringToWords(line, words);
+                            mtype.setWidth(stof(words[5]), stof(words[7]));
+                        }else if(line.substr(4, line.find(" ", 4) - 4) == "PIN"){
+                            string pin_name = line.substr(8, line.find(" ", 8) - 8); // not sure
+                            // cout << pin_name << "\n";
+                            Pin pi(pin_name);
+                            while(getline(lef, line)){ // read inside PIN ... END PIN
+                                if(line.substr(8, line.find(" ", 8) - 8) == "RECT"){
+                                    splitStringToWords(line, words);
+                                    // RECT: init_x=words[9], init_y=words[10], end_x=words[11], end_y=words[12]
+                                    float mid_x =  (stof(words[9]) + stof(words[11])) / 2.0;
+                                    float mid_y = (stof(words[10]) + stof(words[12])) / 2.0;
+                                    pi.addPinLoc(mid_x, mid_y);
+                                }else if(line.substr(8, line.find(" ", 8) - 8) == "END"){
+                                    mtype.addPin(pi);
+                                    break;
+                                }
                             }
+                        }else if(line.substr(0, line.find(" ", 0)) == "END"){
+                            mctype_dict[macro_name] = mtype;
+                            getline(lef, line); // read an empty line
+                            break;
                         }
-                    }else if(line.substr(0, line.find(" ", 0)) == "END"){
-                        mctype_dict[macro_name] = mtype;
-                        getline(lef, line); // read an empty line
-                        break;
-                    }  
+                    }
+                }else{// is macro
+                    while(getline(lef, line)){ // read inside MACRO ... END MACRO
+                        
+                        if(line.substr(3, line.find(" ", 3) - 3) == "SIZE"){
+                            splitStringToWords(line, words);
+                            mtype.setWidth(stof(words[4]), stof(words[6]));
+                        }else if(line.substr(1, line.find(" ", 1) - 1) == "PIN"){
+                            string pin_name = line.substr(5, line.find(" ", 5) - 5); // not sure
+                            // cout << pin_name << "\n";
+                            Pin pi(pin_name);
+                            while(getline(lef, line)){ // read inside PIN ... END PIN
+                                if(line.substr(3, line.find(" ", 3) - 3) == "RECT"){
+                                    splitStringToWords(line, words);
+                                    // RECT: init_x=words[4], init_y=words[5], end_x=words[6], end_y=words[7]
+                                    float mid_x =  (stof(words[4]) + stof(words[5])) / 2.0;
+                                    float mid_y = (stof(words[6]) + stof(words[7])) / 2.0;
+                                    pi.addPinLoc(mid_x, mid_y);
+                                    
+                                }else if(line.substr(1, line.find(" ", 1) - 1) == "END"){
+                                    mtype.addPin(pi);
+                                    break;
+                                }
+                            }
+                        }else if(line.substr(0, line.find(" ", 0)) == "END"){
+                            mctype_dict[macro_name] = mtype;
+                            getline(lef, line); // read an empty line
+                            break;
+                        }
+                    }
                 }
+                
             }
             
         }
         // testing
-        // cout << mctype_dict["TIEH_X1"].width_x << " " <<  mctype_dict["TIEH_X1"].width_y << "\n";
-        // vector<Pin> test_list = mctype_dict["TIEH_X1"].pin_list;
-        // for(int i=0; i<test_list.size(); ++i){
-        //     cout << test_list[i].name << " " << test_list[i].pos_x << " " << test_list[i].pos_y << "\n";
+        // cout << "lef testing: \n" ;
+        // cout << mctype_dict["block_1219x6795_1243f"].width_x << " " <<  mctype_dict["block_1219x6795_1243f"].width_y << "\n";
+        // unordered_map<string, Pin> test_list = mctype_dict["block_1219x6795_1243f"].pin_list;
+        // vector<pair<float, float>> pos = test_list["o0"].pos_list;
+        // for(int i=0; i<pos.size(); ++i){
+        //     cout << pos[i].first << " " << pos[i].second << "\n";
         // }
+
         lef.close();
     }
 
@@ -354,18 +406,18 @@ int main(int argc, char* argv[]){
     }
     
 
-/********** force-based approach **********/
+    /********** force-based approach **********/
 
-/********** determine final Macro location **********/
+    /********** determine final Macro location **********/
     for (int iteration=0; iteration<ITERATION; iteration++){
-        for (unordered_map<string, Macro> :: iterator macro_itr = macro_dict.begin() ; macro_itr != macro_dict.end() ; macro_itr++){
+        for (unordered_map<string, Component> :: iterator macro_itr = component_dict.begin() ; macro_itr != component_dict.end() ; macro_itr++){
             int xaccum[4] = {0,0,0,0}; //N, FN, S, FS
             int yaccum[4] = {0,0,0,0};
 
 
             for (int i = 0; i < len(macro_itr->second.pins); i++ ){
-                unordered_map<string, Macro> :: iterator pin_itr;
-                unordered_map<string, Macro> :: iterator pin_itr;
+                unordered_map<string, Component> :: iterator pin_itr;
+                unordered_map<string, Component> :: iterator pin_itr;
                 pin_itr = Pin.find(macro_itr->second.pins.net);
                 xaccum[0]  +=  pin_itr->second.pos_x - macro_itr->second.pins.N.pos_x ;   
                 xaccum[1]  +=  pin_itr->second.pos_x - macro_itr->second.pins.FN.pos_x; 
@@ -440,10 +492,11 @@ int main(int argc, char* argv[]){
                 dmp << line << "\n";
             }else if(cur_state == "COMPONENTS"){
                 dmp << line << "\n"; // COMPONENTS 175 ;
-                for(int i=0; i<num_components; ++i){ // num_components is calculated previously
+                for(int i=0; i<num_macros; ++i){ // num_macros is calculated previously
                     getline(mlist2, first_line);  // directly wirte same first line to dmp file
                     dmp << first_line << "\n";
                     getline(mlist2, second_line); // change position to new calculated and write to dmp file
+                    // splitStringToWords(first_line, words);
                     splitStringToWords(second_line, sec_words);
                     
                     // for(int i=0; i<words.size();++i){
@@ -457,11 +510,11 @@ int main(int argc, char* argv[]){
                     for(int j=6; j<14; ++j){ // rest of the sentence
                         dmp << " ";
                         if(j==9)
-                            dmp << macro_dict[movable_macro[i]].pos_x; // pos_x
+                            dmp << component_dict[macro[i]].pos_x; // pos_x
                         else if(j==10)
-                            dmp << macro_dict[movable_macro[i]].pos_y; // pos_y
+                            dmp << component_dict[macro[i]].pos_y; // pos_y
                         else if(j==12){ // orientation
-                            orientation ori = macro_dict[movable_macro[i]].orient;
+                            orientation ori = component_dict[macro[i]].orient;
                             if(ori == North)
                                 dmp << "N";
                             else if(ori == FlipNorth)
@@ -479,7 +532,7 @@ int main(int argc, char* argv[]){
                 break;
             }
         }
-        // writing last few lines
+        // wirting last few lines
         while(getline(mlist2, line)){
             dmp << line << "\n";
         }
