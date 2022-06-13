@@ -31,6 +31,7 @@ class Component{
         bool movable;
         orientation orient;
         string component_type;
+        vector<pair<string, string>> pin_connection; //pin_connection[i].first=pin_name, .second=wire_name
         Component(){// default constructor
             name = "none";
             pos_x = 0.0;
@@ -46,6 +47,10 @@ class Component{
             movable = mov;
             orient = ori;
             component_type = mtype;
+        }
+        void addConnection(string pin_name, string connect_name){
+            pair<string, string> p1(pin_name, connect_name);
+            pin_connection.push_back(p1);
         }
         bool operator==(const Component & rhs){
             return this->name == rhs.name;
@@ -153,16 +158,21 @@ int main(int argc, char* argv[]){
     int num_pins = 0;
     int num_components = 0;
     ifstream verilog(argv[1]);
+    ifstream verilog2(argv[1]);
     ifstream lef(argv[2]);
     ifstream def(argv[3]);
     ifstream mlist(argv[4]);
-    ifstream txt(argv[5]); // case00.txt
+    ifstream mlist2(argv[4]);
+    ifstream txt(argv[5]);
+    ofstream dmp(argv[6]);
     string line;
     string word;
     unordered_map<string, Component> component_dict; 
     unordered_map<string, Pin> pin_dict;
     unordered_map<string, Component_type> mctype_dict;
-    vector<string> macro;
+    unordered_map<string, vector<pair<string, string>>> connection_dict; // .first is component_name .second is pin_name
+    unordered_map<string, bool> stored_wire;
+    vector<string> available_macro;
     Rect diearea(0, 0, 0, 0);
 
     /********** read input files **********/
@@ -262,7 +272,7 @@ int main(int argc, char* argv[]){
             }else if(cur_state == "COMPONENTS"){
                 splitStringToWords(line, words);
                 num_macros = stoi(words[1]);
-                macro.reserve(num_macros); // reserving space for # movable macros
+                available_macro.reserve(num_macros); // reserving space for # movable macros
                 for(int i=0; i<num_macros; ++i){
                     getline(mlist, first_line);
                     getline(mlist, second_line);
@@ -272,7 +282,7 @@ int main(int argc, char* argv[]){
                     component_dict[words[4]].pos_x = stof(sec_words[9]);  // update pos_x
                     component_dict[words[4]].pos_y = stof(sec_words[10]); // update pos_y
                     // need to update the orientation ??
-                    macro.push_back(words[4]);
+                    available_macro.push_back(words[4]);
                 }
                 break; // end of reading mlist
             }
@@ -280,10 +290,123 @@ int main(int argc, char* argv[]){
         }
         // testing
         // cout << "mlist testing: \n" ;
-        // for(int i =0; i<macro.size(); ++i){
-        //     cout << macro[i] << "\n";
+        // for(int i =0; i<available_macro.size(); ++i){
+        //     cout << available_macro[i] << "\n";
         // }
         mlist.close();
+    }
+
+    if(verilog.is_open()){
+        string cur_state = "INIT";
+        vector<string> words;
+        while(getline(verilog, line)){
+            // word = line.substr(0, line.find(" ")); // first word of the sentense
+            // switching cur_state
+            if(cur_state == "INIT" && line == "// Start cells"){
+                getline(verilog, line); // get the first line of cells
+                cur_state = "CELLS";
+            }
+
+            // do different things according to cur_state
+            if(cur_state == "INIT"){
+                continue; // do nothing
+            }else if(cur_state == "CELLS"){
+                splitStringToWords(line, words);
+                int pin_num = words.size() - 4;
+                string comp_name = words[1];
+                for(int i=0; i<pin_num; ++i){
+                    int left_brace_pos = words[i+3].find("(");
+                    int right_brace_pos = words[i+3].find(")");
+                    string pin_name = words[i+3].substr(1, left_brace_pos-1);
+                    string wire_name = words[i+3].substr(left_brace_pos+1, right_brace_pos-left_brace_pos-1);
+
+                    // add connection only if the component is macro & movable
+                    if(component_dict[comp_name].movable){ 
+                        component_dict[comp_name].addConnection(pin_name, wire_name);
+                        stored_wire[wire_name] = 1; // actually the value is not important
+                    }
+                    
+                    // add wire_name, <comp_name, pin_name> to the connection_dict
+                    // pair<string, string> p1(comp_name, pin_name);
+                    // vector<pair<string, string>> v1;
+                    // if(connection_dict.find(wire_name) == connection_dict.end()){ // the key is new to connection_dict
+                    //     v1.push_back(p1);
+                    //     connection_dict[wire_name] = v1;
+                    // }else{ // the key is already exist
+                    //     v1 = connection_dict[wire_name];
+                    //     v1.push_back(p1);
+                    //     connection_dict[wire_name] = v1;
+                    // }
+                }
+                
+                if(line == "") break; // end of reading verilog file
+            }
+            
+        }
+        // testing
+        // cout << "verilog testing: \n" ;
+        // vector<pair<string, string>> connect_test = component_dict["A1_B1_C1_D23_E26_F4_G3_H2_o765528"].pin_connection;
+        // for(int i=0; i<connect_test.size(); ++i){
+        //     cout << connect_test[i].first << " " << connect_test[i].second << "\n";
+        // }
+        
+        verilog.close();
+    }
+
+
+    if(verilog2.is_open()){
+        string cur_state = "INIT";
+        vector<string> words;
+        while(getline(verilog2, line)){
+            // word = line.substr(0, line.find(" ")); // first word of the sentense
+            // switching cur_state
+            if(cur_state == "INIT" && line == "// Start cells"){
+                getline(verilog2, line); // get the first line of cells
+                cur_state = "CELLS";
+            }
+                
+            // do different things according to cur_state
+            if(cur_state == "INIT"){
+                continue; // do nothing
+            }else if(cur_state == "CELLS"){            
+                splitStringToWords(line, words);
+                int pin_num = words.size() - 4;
+                string comp_name = words[1];
+                for(int i=0; i<pin_num; ++i){
+                    int left_brace_pos = words[i+3].find("(");
+                    int right_brace_pos = words[i+3].find(")");
+                    string pin_name = words[i+3].substr(1, left_brace_pos-1);
+                    string wire_name = words[i+3].substr(left_brace_pos+1, right_brace_pos-left_brace_pos-1);
+  
+                    // add wire_name, <comp_name, pin_name> to the connection_dict
+                    // only if the wire is in stored_wire
+                    if(stored_wire.find(wire_name) != stored_wire.end()){
+                        pair<string, string> p1(comp_name, pin_name);
+                        vector<pair<string, string>> v1;
+                        if(connection_dict.find(wire_name) == connection_dict.end()){ // the key is new to connection_dict
+                            v1.push_back(p1);
+                            connection_dict[wire_name] = v1;
+                        }else{ // the key is already exist
+                            v1 = connection_dict[wire_name];
+                            v1.push_back(p1);
+                            connection_dict[wire_name] = v1;
+                        }
+                    }     
+                }
+                
+                if(line == "") break; // end of reading verilog file
+            }
+        }
+
+        //testing
+        // cout << "verilog2 testing: \n" ;
+        // cout << "the full size of connection dict is: " << connection_dict.size() << "\n";
+        // vector<pair<string, string>> connect_dict_test = connection_dict["n702812"];
+        // for(int i=0; i<connect_dict_test.size(); ++i){
+        //     cout << connect_dict_test[i].first << " " << connect_dict_test[i].second << "\n";
+        // }      
+
+        verilog.close();
     }
 
     if(lef.is_open()){
@@ -474,8 +597,6 @@ int main(int argc, char* argv[]){
     }
 
     /********** write output file **********/
-    ifstream mlist2(argv[4]);
-    ofstream dmp(argv[6]);
     if(mlist2.is_open() && dmp.is_open()){
         dmp << fixed << setprecision(0);
         string cur_state = "INIT";
@@ -510,11 +631,11 @@ int main(int argc, char* argv[]){
                     for(int j=6; j<14; ++j){ // rest of the sentence
                         dmp << " ";
                         if(j==9)
-                            dmp << component_dict[macro[i]].pos_x; // pos_x
+                            dmp << component_dict[available_macro[i]].pos_x; // pos_x
                         else if(j==10)
-                            dmp << component_dict[macro[i]].pos_y; // pos_y
+                            dmp << component_dict[available_macro[i]].pos_y; // pos_y
                         else if(j==12){ // orientation
-                            orientation ori = component_dict[macro[i]].orient;
+                            orientation ori = component_dict[available_macro[i]].orient;
                             if(ori == North)
                                 dmp << "N";
                             else if(ori == FlipNorth)
