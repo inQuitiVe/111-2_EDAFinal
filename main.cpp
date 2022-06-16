@@ -504,8 +504,8 @@ int main(int argc, char* argv[]){
 
             for (int pin_idx = 0; pin_idx < (component_dict[available_macro[macro_itr]].pin_connection).size(); pin_idx++){
 
-                // 相對距離 = 接到的pin位置 - 相對macro的pin位置
-                Component pin_compnt = connection_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].second].first;
+                // 相對距離 = 接到的pin位置 - 相對macro的pin位置   // connection_dict[].first is component_name .second is pin_name
+                Component pin_compnt = component_dict[connection_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].second].first];
                 string pin_name   = connection_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].second].second;
 
                 pair <float, float> compnt_pos (pin_compnt.pos_x,pin_compnt.pos_y);
