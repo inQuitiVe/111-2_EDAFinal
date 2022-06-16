@@ -23,6 +23,27 @@ enum orientation{
     South,
     FlipSouth
 };
+                    
+orientation ori_list[4] = {North, FlipNorth, South, FlipSouth};
+
+void transorient(pair <float, float> compnt_pos, pair <float, float> compnt_size, pair <float, float> pin_pos, orientation orient, float* pin_abs_pos){
+    if (orient == North){
+        pin_abs_pos[0] = compnt_pos.first+pin_pos.first;
+        pin_abs_pos[1] = compnt_pos.second+pin_pos.second;
+    }
+    if (orient == FlipNorth){
+        pin_abs_pos[0] = compnt_pos.first + compnt_size.first - pin_pos.first;
+        pin_abs_pos[1] =  compnt_pos.second + pin_pos.second;
+    }
+    if (orient == South){
+        pin_abs_pos[0] = compnt_pos.first + pin_pos.first;
+        pin_abs_pos[1] = compnt_pos.second + compnt_size.second - pin_pos.second;
+    }
+    if (orient == FlipSouth){
+        pin_abs_pos[0] = compnt_pos.first + compnt_size.first - pin_pos.first;
+        pin_abs_pos[1] = compnt_pos.second + compnt_size.second - pin_pos.second;
+    }
+}
 
 class Component{
     public:
@@ -172,7 +193,9 @@ int main(int argc, char* argv[]){
     unordered_map<string, Component_type> mctype_dict;
     unordered_map<string, vector<pair<string, string>>> connection_dict; // .first is component_name .second is pin_name
     unordered_map<string, bool> stored_wire;
+    unordered_map<string, bool> is_primary_io;
     vector<string> available_macro;
+    vector<string> all_macro;
     Rect diearea(0, 0, 0, 0);
 
     /********** read input files **********/
@@ -223,7 +246,7 @@ int main(int argc, char* argv[]){
                     Pin pi(words[1]);
                     pi.addPinLoc(stof(third_words[5]), stof(third_words[6]));
                     pin_dict[words[1]] = pi;
-                    
+                    is_primary_io[words[1]] = true;
                 }
                 break; // finishing pin reading
             }else{ // cur_state == "END"
@@ -233,7 +256,7 @@ int main(int argc, char* argv[]){
         def.close();
     }
 
-    if(mlist.is_open()){
+if(mlist.is_open()){
         string cur_state = "INIT";
         vector<string> words, sec_words;
         string first_line, second_line;
@@ -264,23 +287,29 @@ int main(int argc, char* argv[]){
                 splitStringToWords(line, words);
                 num_macros = stoi(words[1]);
                 available_macro.reserve(num_macros); // reserving space for # movable macros
+                all_macro.reserve(num_macros);
                 for(int i=0; i<num_macros; ++i){
                     getline(mlist, first_line);
                     getline(mlist, second_line);
                     splitStringToWords(first_line, words);
                     splitStringToWords(second_line, sec_words);
-                    component_dict[words[4]].movable = true; // update bool movable from false to true
+
+                    // FIXED or PLACED: sec_words[7]
+                    if(sec_words[7] == "PLACED"){
+                        component_dict[words[4]].movable = true; // update bool movable from false to true
+                        available_macro.push_back(words[4]);
+                    }
+                    
                     component_dict[words[4]].pos_x = stof(sec_words[9]);  // update pos_x
                     component_dict[words[4]].pos_y = stof(sec_words[10]); // update pos_y
                     // need to update the orientation ??
-                    available_macro.push_back(words[4]);
+                    all_macro.push_back(words[4]);
+                    
                 }
                 break; // end of reading mlist
             }
             
         }
-
-        mlist.close();
     }
 
     if(verilog.is_open()){
@@ -464,23 +493,7 @@ int main(int argc, char* argv[]){
         getline(txt, line, ' ');
         MAX_DISPLACEMENT = stoi(line);
         MAX_DISPLACEMENT *= def_scalar; // change to the same unit
-        // cout << MAX_DISPLACEMENT;
         txt.close();
-    }
-
-    float *transorient(pair <float, float>compnt_pos, pair <float, float> compnt_size, pair <float, float> pin_pos, orientation orient){
-        if (orient == "North"){
-            return [compnt_pos.first+pin_pos.first, compnt_pos.second+pin_pos.second];
-        }
-        if (orient == "FlipNorth"){
-            return [compnt_pos.first + compt_size.first - pin_pos.first, compnt_pos.second + pin_pos.second];
-        }
-        if (orient == "South"){
-            return [compnt_pos.first + pin_pos.first, compnt_pos.second + compt_size.second - pin_pos.second];
-        }
-        if (orient == "FlipSouth"){
-            return [compnt_pos.first + compt_size.first - pin_pos.first, compnt_pos.second + compt_size.second - pin_pos.second];
-        }
     }
     
 
@@ -496,83 +509,98 @@ int main(int argc, char* argv[]){
         }
     }
     */
+    
+    // operating_macro.name
+
     /********** determine final Macro location **********/
     for (int iteration=0; iteration<ITERATION; iteration++){
         for (int macro_itr = 0; macro_itr != available_macro.size(); macro_itr++){
-            int xaccum[4] = {0,0,0,0}; //N, FN, S, FS
-            int yaccum[4] = {0,0,0,0};
+            float xaccum[4] = {0,0,0,0}; //N, FN, S, FS
+            float yaccum[4] = {0,0,0,0};
+            string operating_macro_name = available_macro[macro_itr];
+            Component operating_macro = component_dict[operating_macro_name];
+            vector<pair<string, string>> operating_connection = operating_macro.pin_connection;
+            for (int pin_idx = 0; pin_idx < operating_connection.size(); pin_idx++){
+                string connect_pin = operating_connection[pin_idx].first;
+                string connect_wire = operating_connection[pin_idx].second;
+                vector<pair<string, string>> wire_to_all_connections = connection_dict[connect_wire];
+                for (int desti_idx = 0; desti_idx != wire_to_all_connections.size(); desti_idx++){
+                    string desti_macro_name = wire_to_all_connections[desti_idx].first;
+                    if (desti_macro_name == operating_macro.name) continue;
+                    
+                    // 相對距離 = 接到的pin的絕對位置 - 相對macro的pin位置
+                    Component desti_macro = component_dict[desti_macro_name];
+                    string desti_pin_name = wire_to_all_connections[desti_idx].second;
 
-            for (int pin_idx = 0; pin_idx < (component_dict[available_macro[macro_itr]].pin_connection).size(); pin_idx++){
+                    pair <float, float> compnt_pos (desti_macro.pos_x, desti_macro.pos_y);
+                    pair <float, float> compnt_size(mctype_dict[desti_macro_name].width_x, mctype_dict[desti_macro_name].width_y);
+                    
+                    float pin_abs_pos[2];
+                    transorient(compnt_pos, compnt_size, mctype_dict[desti_macro_name].pin_list[desti_pin_name].pos_list[0], desti_macro.orient, pin_abs_pos);
 
-                // 相對距離 = 接到的pin位置 - 相對macro的pin位置   // connection_dict[].first is component_name .second is pin_name
-                Component pin_compnt = component_dict[connection_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].second].first];
-                string pin_name   = connection_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].second].second;
+                    pair <float, float> macro_pos(0.0, 0.0);
+                    pair <float, float> macro_size(mctype_dict[operating_macro_name].width_x, mctype_dict[operating_macro_name].width_y);
+                    // pair <float, float> macro_pin_pos = mctype_dict[operating_macro.name].pin_list[   operating_macro.pin_connection[pin_idx].second     ].pos_list[0];
 
-                pair <float, float> compnt_pos (pin_compnt.pos_x,pin_compnt.pos_y);
-                pair <float, float> compnt_size(mctype_dict[pin_compnt.name].width_x,mctype_dict[pin_compnt.name].width_y);
-                float pin_abs_pos[2];
-                pin_abs_pos  = transorient(compnt_pos,compnt_size, pin_dict[pin_name].pos_list[0], pin_compnt.orient);
-
-                pair <float, float> macro_pos (0,0);
-                pair <float, float> compnt_size(component_dict[available_macro[macro_itr]].width_x,component_dict[available_macro[macro_itr]].width_y);
-                float macro_pin_abs_pos[2];
-                macro_pin_abs_pos = transorient(macro_pos, compnt_size, pin_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].first], "North");
-                xaccum[0]  +=  pin_abs_pos[0] - macro_pin_pos[0];
-                yaccum[0]  +=  pin_abs_pos[1] - macro_pin_pos[1];   
-                
-                macro_pin_abs_pos = transorient(macro_pos, compnt_size, pin_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].first], "FlipNorth");
-                xaccum[1]  +=  pin_abs_pos[0] - macro_pin_pos[0]; 
-                yaccum[1]  +=  pin_abs_pos[1] - macro_pin_pos[1]; 
-
-                macro_pin_abs_pos = transorient(macro_pos, compnt_size, pin_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].first], "South");
-                xaccum[2]  +=  pin_abs_pos[0] - macro_pin_pos[0]; 
-                yaccum[2]  +=  pin_abs_pos[1] - macro_pin_pos[1]; 
-
-                macro_pin_abs_pos = transorient(macro_pos, compnt_size, pin_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].first], "FlipSouth");
-                xaccum[3]  +=  pin_abs_pos[0] - macro_pin_pos[0]; 
-                yaccum[3]  +=  pin_abs_pos[1] - macro_pin_pos[1];                                                                                                                                                                    = component_dict[available_macro[macro_itr]].pins[i].pos_x + component_dict[available_macro[macro_itr]].pos_x;
+                    float macro_pin_relative_pos[2];
+                    for (int i=0; i<4; i++){
+                        transorient(macro_pos, macro_size, mctype_dict[operating_macro_name].pin_list[connect_pin].pos_list[0], ori_list[i], macro_pin_relative_pos);
+                        xaccum[i]  +=  pin_abs_pos[0] - macro_pin_relative_pos[0];
+                        yaccum[i]  +=  pin_abs_pos[1] - macro_pin_relative_pos[1];   
+                    }
+                }
             }
 
+            // find optimal pos_x, pos_y, and orient
             float optimal_pos_x = INT_MAX;
             float optimal_pos_y = INT_MAX;
-            string optimal_orient = "N";
-
-            xaccum[0] /= component_dict[available_macro[macro_itr]].pin_connection.size();
-            yaccum[0] /= component_dict[available_macro[macro_itr]].pin_connection.size();
-            if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[0]-init_pos_x) + abs(yaccum[0]-init_pos_y))){
-                optimal_pos_x = xaccum[0];
-                optimal_orient = "N";
-            }
-            xaccum[1] /= component_dict[available_macro[macro_itr]].pin_connection.size();
-            yaccum[1] /= component_dict[available_macro[macro_itr]].pin_connection.size();
-            if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[1]-init_pos_x) + abs(yaccum[1]-init_pos_y))){
-                optimal_pos_x = xaccum[1];
-                optimal_orient = "FN";
-            }
-            xaccum[2] /= component_dict[available_macro[macro_itr]].pin_connection.size();
-            yaccum[2] /= component_dict[available_macro[macro_itr]].pin_connection.size();
-            if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[2]-init_pos_x) + abs(yaccum[2]-init_pos_y))){
-                optimal_pos_x = xaccum[2];
-                optimal_orient = "S";
-            }
-            xaccum[3] /= component_dict[available_macro[macro_itr]].pin_connection.size();
-            yaccum[3] /= component_dict[available_macro[macro_itr]].pin_connection.size();
-            if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[3]-init_pos_x) + abs(yaccum[3]-init_pos_y))){
-                optimal_pos_x = xaccum[3];
-                optimal_orient = "FS";
+            orientation optimal_orient = North;
+            float current_pos_x = operating_macro.pos_x;
+            float current_pos_y = operating_macro.pos_y;
+            for(int i=0; i<4; ++i){ //i=0:North, i=1:FlipNorth, i=2:South, i=3:FlipSouth, 
+                xaccum[i] /= operating_macro.pin_connection.size();
+                yaccum[i] /= operating_macro.pin_connection.size();
+                if ((abs(optimal_pos_x - current_pos_x) +  abs(optimal_pos_y - current_pos_y)) > 
+                    (abs(   xaccum[i]  - current_pos_x) +  abs(   yaccum[i]  - current_pos_y))){
+                    optimal_pos_x = xaccum[i];
+                    optimal_pos_y = yaccum[i];
+                    optimal_orient = ori_list[i];
+                }
             }
             
+            // TODO: check if macro overlaps with each other
+            
+            // adjust the pos_x, pos_y, and orient to the optimal position
+            operating_macro.orient = optimal_orient;
+            /// check if the new positon is valid
+            //// 1.
+            // float difference = abs(optimal_pos_x - current_pos_x) - abs(optimal_pos_y - current_pos_y);
+            // if (difference > 0){
+            //     if (difference ) 
+            //     operating_macro.pos_x += (difference+(MAX_DISPLACEMENT-difference)/2); 
+            //     operating_macro.pos_y += ((MAX_DISPLACEMENT-difference)/2);
+            // }
+            // else{
+            //     operating_macro.pos_y += (-1*difference+(MAX_DISPLACEMENT-difference)/2); 
+            //     operating_macro.pos_x += ((MAX_DISPLACEMENT-difference)/2);
+            // }   
 
+            // operating_macro.pos_x += x_diff * ratio;
 
-            float difference = abs(optimal_pos_x-component_dict[available_macro[macro_itr]].pos_x) - abs(optimal_pos_y-component_dict[available_macro[macro_itr]].pos_y);
-            if (difference > 0){
-                component_dict[available_macro[macro_itr]].pos_x += (difference+(MAX_DISPLACEMENT*def_scalar-difference)/2); 
-                component_dict[available_macro[macro_itr]].pos_y += ((MAX_DISPLACEMENT*def_scalar-difference)/2);
+            //// 2.
+            float x_diff = optimal_pos_x - current_pos_x;
+            float y_diff = optimal_pos_y - current_pos_y;
+            float sum = abs(x_diff) + abs(y_diff);
+            if (sum > MAX_DISPLACEMENT){
+                float ratio = MAX_DISPLACEMENT/sum;
+                operating_macro.pos_x += x_diff * ratio;
+                operating_macro.pos_y += y_diff * ratio;
             }
             else{
-                component_dict[available_macro[macro_itr]].pos_y += (-1*difference+(MAX_DISPLACEMENT*def_scalar-difference)/2); 
-                component_dict[available_macro[macro_itr]].pos_x += ((MAX_DISPLACEMENT*def_scalar-difference)/2); 
-            }   
+                operating_macro.pos_x += x_diff;
+                operating_macro.pos_y += y_diff;
+            }
+            
         }
     }
 
