@@ -230,15 +230,6 @@ int main(int argc, char* argv[]){
                 break;
             }
         }
-        // testing
-        // cout << "def testing: \n" ;
-        // cout << "num_components: " << num_components << "\n";
-        // cout << component_dict["FE_OFC114571_n176682"].pos_x << " " << component_dict["FE_OFC114571_n176682"].pos_y << "\n";
-        // cout << component_dict["o809057"].pos_x << " " << component_dict["o809057"].pos_y << "\n";
-        // cout << "num_pins: " << num_pins << "\n";
-        // vector<pair<float, float>> pos = pin_dict["FE_RN_2"].pos_list;
-        // cout << pos[0].first << " " << pos[0].second << "\n";
-
         def.close();
     }
 
@@ -288,11 +279,7 @@ int main(int argc, char* argv[]){
             }
             
         }
-        // testing
-        // cout << "mlist testing: \n" ;
-        // for(int i =0; i<available_macro.size(); ++i){
-        //     cout << available_macro[i] << "\n";
-        // }
+
         mlist.close();
     }
 
@@ -325,31 +312,10 @@ int main(int argc, char* argv[]){
                         component_dict[comp_name].addConnection(pin_name, wire_name);
                         stored_wire[wire_name] = 1; // actually the value is not important
                     }
-                    
-                    // add wire_name, <comp_name, pin_name> to the connection_dict
-                    // pair<string, string> p1(comp_name, pin_name);
-                    // vector<pair<string, string>> v1;
-                    // if(connection_dict.find(wire_name) == connection_dict.end()){ // the key is new to connection_dict
-                    //     v1.push_back(p1);
-                    //     connection_dict[wire_name] = v1;
-                    // }else{ // the key is already exist
-                    //     v1 = connection_dict[wire_name];
-                    //     v1.push_back(p1);
-                    //     connection_dict[wire_name] = v1;
-                    // }
                 }
-                
                 if(line == "") break; // end of reading verilog file
             }
-            
         }
-        // testing
-        // cout << "verilog testing: \n" ;
-        // vector<pair<string, string>> connect_test = component_dict["A1_B1_C1_D23_E26_F4_G3_H2_o765528"].pin_connection;
-        // for(int i=0; i<connect_test.size(); ++i){
-        //     cout << connect_test[i].first << " " << connect_test[i].second << "\n";
-        // }
-        
         verilog.close();
     }
 
@@ -377,9 +343,6 @@ int main(int argc, char* argv[]){
                     int right_brace_pos = words[i+3].find(")");
                     string pin_name = words[i+3].substr(1, left_brace_pos-1);
                     string wire_name = words[i+3].substr(left_brace_pos+1, right_brace_pos-left_brace_pos-1);
-  
-                    // add wire_name, <comp_name, pin_name> to the connection_dict
-                    // only if the wire is in stored_wire
                     if(stored_wire.find(wire_name) != stored_wire.end()){
                         pair<string, string> p1(comp_name, pin_name);
                         vector<pair<string, string>> v1;
@@ -393,19 +356,9 @@ int main(int argc, char* argv[]){
                         }
                     }     
                 }
-                
                 if(line == "") break; // end of reading verilog file
             }
         }
-
-        //testing
-        // cout << "verilog2 testing: \n" ;
-        // cout << "the full size of connection dict is: " << connection_dict.size() << "\n";
-        // vector<pair<string, string>> connect_dict_test = connection_dict["n702812"];
-        // for(int i=0; i<connect_dict_test.size(); ++i){
-        //     cout << connect_dict_test[i].first << " " << connect_dict_test[i].second << "\n";
-        // }      
-
         verilog.close();
     }
 
@@ -452,12 +405,10 @@ int main(int argc, char* argv[]){
                             mtype.setWidth(stof(words[5]), stof(words[7]));
                         }else if(line.substr(4, line.find(" ", 4) - 4) == "PIN"){
                             string pin_name = line.substr(8, line.find(" ", 8) - 8); // not sure
-                            // cout << pin_name << "\n";
                             Pin pi(pin_name);
                             while(getline(lef, line)){ // read inside PIN ... END PIN
                                 if(line.substr(8, line.find(" ", 8) - 8) == "RECT"){
                                     splitStringToWords(line, words);
-                                    // RECT: init_x=words[9], init_y=words[10], end_x=words[11], end_y=words[12]
                                     float mid_x =  (stof(words[9]) + stof(words[11])) / 2.0;
                                     float mid_y = (stof(words[10]) + stof(words[12])) / 2.0;
                                     pi.addPinLoc(mid_x, mid_y);
@@ -502,19 +453,8 @@ int main(int argc, char* argv[]){
                         }
                     }
                 }
-                
             }
-            
         }
-        // testing
-        // cout << "lef testing: \n" ;
-        // cout << mctype_dict["block_1219x6795_1243f"].width_x << " " <<  mctype_dict["block_1219x6795_1243f"].width_y << "\n";
-        // unordered_map<string, Pin> test_list = mctype_dict["block_1219x6795_1243f"].pin_list;
-        // vector<pair<float, float>> pos = test_list["o0"].pos_list;
-        // for(int i=0; i<pos.size(); ++i){
-        //     cout << pos[i].first << " " << pos[i].second << "\n";
-        // }
-
         lef.close();
     }
 
@@ -527,9 +467,26 @@ int main(int argc, char* argv[]){
         // cout << MAX_DISPLACEMENT;
         txt.close();
     }
+
+    float *transorient(pair <float, float>compnt_pos, pair <float, float> compnt_size, pair <float, float> pin_pos, orientation orient){
+        if (orient == "North"){
+            return [compnt_pos.first+pin_pos.first, compnt_pos.second+pin_pos.second];
+        }
+        if (orient == "FlipNorth"){
+            return [compnt_pos.first + compt_size.first - pin_pos.first, compnt_pos.second + pin_pos.second];
+        }
+        if (orient == "South"){
+            return [compnt_pos.first + pin_pos.first, compnt_pos.second + compt_size.second - pin_pos.second];
+        }
+        if (orient == "FlipSouth"){
+            return [compnt_pos.first + compt_size.first - pin_pos.first, compnt_pos.second + compt_size.second - pin_pos.second];
+        }
+    }
     
 
+<<<<<<< HEAD
     /********** force-directed approach **********/
+    /*
     for (int i=0; i<num_macros; i++){ // move all macros
         int wire_total_length_x = 0, wire_total_length_y = 0;
         for (int j=0; j<component_dict[available_macro[i]].pin_connection.size(); j++){ // consider all the connected components of the macro
@@ -539,68 +496,87 @@ int main(int argc, char* argv[]){
             
         }
     }
+    */
     /********** determine final Macro location **********/
+=======
+    /********** force-based approach **********/
+>>>>>>> a72f6b56bd0ee9b4375fdc36395103af1cbb838e
     for (int iteration=0; iteration<ITERATION; iteration++){
-        for (unordered_map<string, Component> :: iterator macro_itr = component_dict.begin() ; macro_itr != component_dict.end() ; macro_itr++){
+        for (int macro_itr = 0; macro_itr != available_macro.size(); macro_itr++){
             int xaccum[4] = {0,0,0,0}; //N, FN, S, FS
             int yaccum[4] = {0,0,0,0};
 
+            for (int pin_idx = 0; pin_idx < (component_dict[available_macro[macro_itr]].pin_connection).size(); pin_idx++){
 
-            for (int i = 0; i < len(macro_itr->second.pins); i++ ){
-                unordered_map<string, Component> :: iterator pin_itr;
-                unordered_map<string, Component> :: iterator pin_itr;
-                pin_itr = Pin.find(macro_itr->second.pins.net);
-                xaccum[0]  +=  pin_itr->second.pos_x - macro_itr->second.pins.N.pos_x ;   
-                xaccum[1]  +=  pin_itr->second.pos_x - macro_itr->second.pins.FN.pos_x; 
-                xaccum[2]  +=  pin_itr->second.pos_x - macro_itr->second.pins.S.pos_x ; 
-                xaccum[3]  +=  pin_itr->second.pos_x - macro_itr->second.pins.FS.pos_x; 
-                yaccum[0]  +=  pin_itr->second.pos_y - macro_itr->second.pins.N.pos_y ;   
-                yaccum[1]  +=  pin_itr->second.pos_y - macro_itr->second.pins.FN.pos_y; 
-                yaccum[2]  +=  pin_itr->second.pos_y - macro_itr->second.pins.S.pos_y ; 
-                yaccum[3]  +=  pin_itr->second.pos_y - macro_itr->second.pins.FS.pos_y;                                                                                                                                                                    = macro_itr->second.pins[i].pos_x + macro_itr->second.pos_x;
+                // 相對距離 = 接到的pin位置 - 相對macro的pin位置
+                Component pin_compnt = connection_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].second].first;
+                string pin_name   = connection_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].second].second;
+
+                pair <float, float> compnt_pos (pin_compnt.pos_x,pin_compnt.pos_y);
+                pair <float, float> compnt_size(mctype_dict[pin_compnt.name].width_x,mctype_dict[pin_compnt.name].width_y);
+                float pin_abs_pos[2];
+                pin_abs_pos  = transorient(compnt_pos,compnt_size, pin_dict[pin_name].pos_list[0], pin_compnt.orient);
+
+                pair <float, float> macro_pos (0,0);
+                pair <float, float> compnt_size(component_dict[available_macro[macro_itr]].width_x,component_dict[available_macro[macro_itr]].width_y);
+                float macro_pin_abs_pos[2];
+                macro_pin_abs_pos = transorient(macro_pos, compnt_size, pin_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].first], "North");
+                xaccum[0]  +=  pin_abs_pos[0] - macro_pin_pos[0];
+                yaccum[0]  +=  pin_abs_pos[1] - macro_pin_pos[1];   
+                
+                macro_pin_abs_pos = transorient(macro_pos, compnt_size, pin_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].first], "FlipNorth");
+                xaccum[1]  +=  pin_abs_pos[0] - macro_pin_pos[0]; 
+                yaccum[1]  +=  pin_abs_pos[1] - macro_pin_pos[1]; 
+
+                macro_pin_abs_pos = transorient(macro_pos, compnt_size, pin_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].first], "South");
+                xaccum[2]  +=  pin_abs_pos[0] - macro_pin_pos[0]; 
+                yaccum[2]  +=  pin_abs_pos[1] - macro_pin_pos[1]; 
+
+                macro_pin_abs_pos = transorient(macro_pos, compnt_size, pin_dict[component_dict[available_macro[macro_itr]].pin_connection[pin_idx].first], "FlipSouth");
+                xaccum[3]  +=  pin_abs_pos[0] - macro_pin_pos[0]; 
+                yaccum[3]  +=  pin_abs_pos[1] - macro_pin_pos[1];                                                                                                                                                                    = component_dict[available_macro[macro_itr]].pins[i].pos_x + component_dict[available_macro[macro_itr]].pos_x;
             }
 
-            int optimal_pos_x = INT_MAX;
-            int optimal_pos_y = INT_MAX;
+            float optimal_pos_x = INT_MAX;
+            float optimal_pos_y = INT_MAX;
             string optimal_orient = "N";
 
-            xaccum[0] /= len(macro_itr->second.pins);
-            yaccum[0] /= len(macro_itr->second.pins);
+            xaccum[0] /= component_dict[available_macro[macro_itr]].pin_connection.size();
+            yaccum[0] /= component_dict[available_macro[macro_itr]].pin_connection.size();
             if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[0]-init_pos_x) + abs(yaccum[0]-init_pos_y))){
                 optimal_pos_x = xaccum[0];
                 optimal_orient = "N";
             }
-            xaccum[1] /= len(macro_itr->second.pins);
-            yaccum[1] /= len(macro_itr->second.pins);
+            xaccum[1] /= component_dict[available_macro[macro_itr]].pin_connection.size();
+            yaccum[1] /= component_dict[available_macro[macro_itr]].pin_connection.size();
             if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[1]-init_pos_x) + abs(yaccum[1]-init_pos_y))){
                 optimal_pos_x = xaccum[1];
                 optimal_orient = "FN";
             }
-            xaccum[2] /= len(macro_itr->second.pins);
-            yaccum[2] /= len(macro_itr->second.pins);
+            xaccum[2] /= component_dict[available_macro[macro_itr]].pin_connection.size();
+            yaccum[2] /= component_dict[available_macro[macro_itr]].pin_connection.size();
             if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[2]-init_pos_x) + abs(yaccum[2]-init_pos_y))){
                 optimal_pos_x = xaccum[2];
                 optimal_orient = "S";
             }
-            xaccum[3] /= len(macro_itr->second.pins);
-            yaccum[3] /= len(macro_itr->second.pins);
+            xaccum[3] /= component_dict[available_macro[macro_itr]].pin_connection.size();
+            yaccum[3] /= component_dict[available_macro[macro_itr]].pin_connection.size();
             if ((abs(optimal_pos_x-init_pos_x) + abs(optimal_pos_y-init_pos_y)) > (abs(xaccum[3]-init_pos_x) + abs(yaccum[3]-init_pos_y))){
                 optimal_pos_x = xaccum[3];
                 optimal_orient = "FS";
             }
             
 
-            for (int i=0; i<10; i++){
-                if (macro_itr->second.pos_x == optimal_pos_x && macro_itr->second.pos_y == optimal_pos_y) break;
-                if (abs(optimal_pos_x-macro_itr->second.pos_x) > abs(optimal_pos_x-macro_itr->second.pos_x)){
-                    if(optimal_pos_x > macro_itr->second.pos_x) macro_itr->second.pos_x++;
-                    else macro_itr->second.pos_x--;
-                }
-                else{
-                    if(optimal_pos_y > macro_itr->second.pos_y) macro_itr->second.pos_y++;
-                    else macro_itr->second.pos_y--;
-                }
-            }      
+
+            float difference = abs(optimal_pos_x-component_dict[available_macro[macro_itr]].pos_x) - abs(optimal_pos_y-component_dict[available_macro[macro_itr]].pos_y);
+            if (difference > 0){
+                component_dict[available_macro[macro_itr]].pos_x += difference+(MAX_DISPLACEMENT*def_scalar-difference)/2 
+                component_dict[available_macro[macro_itr]].pos_y += (MAX_DISPLACEMENT*def_scalar-difference)/2 
+            }
+            else{
+                component_dict[available_macro[macro_itr]].pos_y += -difference+(MAX_DISPLACEMENT*def_scalar-difference)/2 
+                component_dict[available_macro[macro_itr]].pos_x += (MAX_DISPLACEMENT*def_scalar-difference)/2 
+            }   
         }
     }
 
@@ -615,7 +591,6 @@ int main(int argc, char* argv[]){
             // switching cur_state
             if(cur_state == "INIT" && word == "COMPONENTS")
                 cur_state = "COMPONENTS";
-            
             // do different things according to cur_state
             if(cur_state == "INIT"){
                 dmp << line << "\n";
@@ -625,15 +600,7 @@ int main(int argc, char* argv[]){
                     getline(mlist2, first_line);  // directly wirte same first line to dmp file
                     dmp << first_line << "\n";
                     getline(mlist2, second_line); // change position to new calculated and write to dmp file
-                    // splitStringToWords(first_line, words);
                     splitStringToWords(second_line, sec_words);
-                    
-                    // for(int i=0; i<words.size();++i){
-                    //     cout << i << ": " << words[i] << '\n';
-                    // }
-
-                    // pos_x is at sec_words[9], pos_y is at sec_words[10]
-                    // orientation is at sec_words[12]
                     for(int j=0; j<5; ++j) // 5 spaces
                         dmp << " ";
                     for(int j=6; j<14; ++j){ // rest of the sentence
