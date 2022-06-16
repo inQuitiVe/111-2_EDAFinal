@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <limits>
 #include <ctype.h> // for isalpha()
+#include <cmath>
 
 #define ITERATION 1
 
@@ -517,8 +518,8 @@ int main(int argc, char* argv[]){
             float xaccum[4] = {0,0,0,0}; //N, FN, S, FS
             float yaccum[4] = {0,0,0,0};
             string operating_macro_name = available_macro[macro_itr];
-            Component operating_macro = component_dict[operating_macro_name];
-            vector<pair<string, string>> operating_connection = operating_macro.pin_connection;
+            Component* operating_macro = &component_dict[operating_macro_name];
+            vector<pair<string, string>> operating_connection = operating_macro->pin_connection;
             for (int pin_idx = 0; pin_idx < operating_connection.size(); pin_idx++){
                 string connect_pin = operating_connection[pin_idx].first;
                 string connect_wire = operating_connection[pin_idx].second;
@@ -538,7 +539,7 @@ int main(int argc, char* argv[]){
 
                 for (int desti_idx = 0; desti_idx != wire_to_all_connections.size(); desti_idx++){
                     string desti_macro_name = wire_to_all_connections[desti_idx].first;
-                    if (desti_macro_name == operating_macro.name) continue;
+                    if (desti_macro_name == operating_macro->name) continue;
                     
                     // 相對距離 = 接到的pin的絕對位置 - 相對macro的pin位置
                     Component desti_macro = component_dict[desti_macro_name];
@@ -564,11 +565,11 @@ int main(int argc, char* argv[]){
             float optimal_pos_x = INT_MAX;
             float optimal_pos_y = INT_MAX;
             orientation optimal_orient = North;
-            float current_pos_x = operating_macro.pos_x;
-            float current_pos_y = operating_macro.pos_y;
+            float current_pos_x = operating_macro->pos_x;
+            float current_pos_y = operating_macro->pos_y;
             for(int i=0; i<4; ++i){ //i=0:North, i=1:FlipNorth, i=2:South, i=3:FlipSouth, 
-                xaccum[i] /= operating_macro.pin_connection.size();
-                yaccum[i] /= operating_macro.pin_connection.size();
+                xaccum[i] /= operating_connection.size();
+                yaccum[i] /= operating_connection.size();
                 if ((abs(optimal_pos_x - current_pos_x) +  abs(optimal_pos_y - current_pos_y)) > 
                     (abs(   xaccum[i]  - current_pos_x) +  abs(yaccum[i]  - current_pos_y))){
                     optimal_pos_x = xaccum[i];
@@ -580,7 +581,7 @@ int main(int argc, char* argv[]){
             // TODO: check if macro overlaps with each other
             
             // adjust the pos_x, pos_y, and orient to the optimal position
-            operating_macro.orient = optimal_orient;
+            operating_macro->orient = optimal_orient;
             /// check if the new positon is valid
             /*
             // float difference = abs(optimal_pos_x - current_pos_x) - abs(optimal_pos_y - current_pos_y);
@@ -594,21 +595,34 @@ int main(int argc, char* argv[]){
             //     operating_macro.pos_x += ((MAX_DISPLACEMENT-difference)/2);
             // }   
             */
-            
+            // By joey
+            // 要不要先上船一個github版本? 
+            // 我原本想跑placing看看結果
+            // 阿server不給我跑qq 放棄 我先去睡覺
+            // end joey
+            // 說不定睡一覺都好了哈哈 www //真的不行可以用其他工作站跑就是了 只是檔案要重新船qq
+            // 好啦~大家晚安明天再說
+            // 我差不多先下線了喔辛苦了 復原會復原我的改動XD  喔不
             float x_diff = optimal_pos_x - current_pos_x;
             float y_diff = optimal_pos_y - current_pos_y;
             float sum = abs(x_diff) + abs(y_diff);
             if (sum > MAX_DISPLACEMENT){
                 // 1.
                 float ratio = MAX_DISPLACEMENT/sum;
-                operating_macro.pos_x += int(x_diff * ratio);
-                operating_macro.pos_y += int(y_diff * ratio);
+                operating_macro->pos_x += int(floor(x_diff * ratio));
+                operating_macro->pos_y += int(floor(y_diff * ratio));
                 // 2.
-                
+                /*
+                float diff = abs(x_diff) + abs(y_diff);
+                if (x_diff > y_diff){
+                    operating_macro->pos_x += int(floor(x_diff + ));
+                    operating_macro->pos_y += int(floor(y_diff - ));
+                }
+                */
             }
             else{
-                operating_macro.pos_x += int(x_diff);
-                operating_macro.pos_y += int(y_diff);
+                operating_macro->pos_x += int(floor(x_diff));
+                operating_macro->pos_y += int(floor(y_diff));
             }
         }
     }
