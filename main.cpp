@@ -484,7 +484,6 @@ int main(int argc, char* argv[]){
     }
     
 
-<<<<<<< HEAD
     /********** force-directed approach **********/
     /*
     for (int i=0; i<num_macros; i++){ // move all macros
@@ -498,9 +497,6 @@ int main(int argc, char* argv[]){
     }
     */
     /********** determine final Macro location **********/
-=======
-    /********** force-based approach **********/
->>>>>>> a72f6b56bd0ee9b4375fdc36395103af1cbb838e
     for (int iteration=0; iteration<ITERATION; iteration++){
         for (int macro_itr = 0; macro_itr != available_macro.size(); macro_itr++){
             int xaccum[4] = {0,0,0,0}; //N, FN, S, FS
@@ -570,12 +566,12 @@ int main(int argc, char* argv[]){
 
             float difference = abs(optimal_pos_x-component_dict[available_macro[macro_itr]].pos_x) - abs(optimal_pos_y-component_dict[available_macro[macro_itr]].pos_y);
             if (difference > 0){
-                component_dict[available_macro[macro_itr]].pos_x += difference+(MAX_DISPLACEMENT*def_scalar-difference)/2 
-                component_dict[available_macro[macro_itr]].pos_y += (MAX_DISPLACEMENT*def_scalar-difference)/2 
+                component_dict[available_macro[macro_itr]].pos_x += (difference+(MAX_DISPLACEMENT*def_scalar-difference)/2); 
+                component_dict[available_macro[macro_itr]].pos_y += ((MAX_DISPLACEMENT*def_scalar-difference)/2);
             }
             else{
-                component_dict[available_macro[macro_itr]].pos_y += -difference+(MAX_DISPLACEMENT*def_scalar-difference)/2 
-                component_dict[available_macro[macro_itr]].pos_x += (MAX_DISPLACEMENT*def_scalar-difference)/2 
+                component_dict[available_macro[macro_itr]].pos_y += (-1*difference+(MAX_DISPLACEMENT*def_scalar-difference)/2); 
+                component_dict[available_macro[macro_itr]].pos_x += ((MAX_DISPLACEMENT*def_scalar-difference)/2); 
             }   
         }
     }
