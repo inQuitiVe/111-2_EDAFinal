@@ -13,7 +13,7 @@
 #include <limits>
 #include <ctype.h> // for isalpha()
 
-#define ITERATION 10
+#define ITERATION 1
 
 using namespace std;
 
@@ -256,7 +256,7 @@ int main(int argc, char* argv[]){
         def.close();
     }
 
-if(mlist.is_open()){
+    if(mlist.is_open()){
         string cur_state = "INIT";
         vector<string> words, sec_words;
         string first_line, second_line;
@@ -510,7 +510,6 @@ if(mlist.is_open()){
     }
     */
     
-    // operating_macro.name
 
     /********** determine final Macro location **********/
     for (int iteration=0; iteration<ITERATION; iteration++){
@@ -524,6 +523,19 @@ if(mlist.is_open()){
                 string connect_pin = operating_connection[pin_idx].first;
                 string connect_wire = operating_connection[pin_idx].second;
                 vector<pair<string, string>> wire_to_all_connections = connection_dict[connect_wire];
+
+                pair <float, float> macro_pos(0.0, 0.0);
+                pair <float, float> macro_size(mctype_dict[operating_macro_name].width_x, mctype_dict[operating_macro_name].width_y);
+                float macro_pin_relative_pos[2];
+
+                if(is_primary_io.find(connect_wire) != is_primary_io.end()){
+                    for (int i=0; i<4; i++){
+                            transorient(macro_pos, macro_size, mctype_dict[operating_macro_name].pin_list[connect_pin].pos_list[0], ori_list[i], macro_pin_relative_pos);
+                            xaccum[i]  +=  pin_dict[connect_wire].pos_list[0].first - macro_pin_relative_pos[0];
+                            yaccum[i]  +=  pin_dict[connect_wire].pos_list[0].second - macro_pin_relative_pos[1];   
+                        }
+                }
+
                 for (int desti_idx = 0; desti_idx != wire_to_all_connections.size(); desti_idx++){
                     string desti_macro_name = wire_to_all_connections[desti_idx].first;
                     if (desti_macro_name == operating_macro.name) continue;
@@ -538,11 +550,8 @@ if(mlist.is_open()){
                     float pin_abs_pos[2];
                     transorient(compnt_pos, compnt_size, mctype_dict[desti_macro_name].pin_list[desti_pin_name].pos_list[0], desti_macro.orient, pin_abs_pos);
 
-                    pair <float, float> macro_pos(0.0, 0.0);
-                    pair <float, float> macro_size(mctype_dict[operating_macro_name].width_x, mctype_dict[operating_macro_name].width_y);
-                    // pair <float, float> macro_pin_pos = mctype_dict[operating_macro.name].pin_list[   operating_macro.pin_connection[pin_idx].second     ].pos_list[0];
 
-                    float macro_pin_relative_pos[2];
+                    
                     for (int i=0; i<4; i++){
                         transorient(macro_pos, macro_size, mctype_dict[operating_macro_name].pin_list[connect_pin].pos_list[0], ori_list[i], macro_pin_relative_pos);
                         xaccum[i]  +=  pin_abs_pos[0] - macro_pin_relative_pos[0];
@@ -561,7 +570,7 @@ if(mlist.is_open()){
                 xaccum[i] /= operating_macro.pin_connection.size();
                 yaccum[i] /= operating_macro.pin_connection.size();
                 if ((abs(optimal_pos_x - current_pos_x) +  abs(optimal_pos_y - current_pos_y)) > 
-                    (abs(   xaccum[i]  - current_pos_x) +  abs(   yaccum[i]  - current_pos_y))){
+                    (abs(   xaccum[i]  - current_pos_x) +  abs(yaccum[i]  - current_pos_y))){
                     optimal_pos_x = xaccum[i];
                     optimal_pos_y = yaccum[i];
                     optimal_orient = ori_list[i];
@@ -573,7 +582,7 @@ if(mlist.is_open()){
             // adjust the pos_x, pos_y, and orient to the optimal position
             operating_macro.orient = optimal_orient;
             /// check if the new positon is valid
-            //// 1.
+            /*
             // float difference = abs(optimal_pos_x - current_pos_x) - abs(optimal_pos_y - current_pos_y);
             // if (difference > 0){
             //     if (difference ) 
@@ -584,23 +593,23 @@ if(mlist.is_open()){
             //     operating_macro.pos_y += (-1*difference+(MAX_DISPLACEMENT-difference)/2); 
             //     operating_macro.pos_x += ((MAX_DISPLACEMENT-difference)/2);
             // }   
-
-            // operating_macro.pos_x += x_diff * ratio;
-
-            //// 2.
+            */
+            
             float x_diff = optimal_pos_x - current_pos_x;
             float y_diff = optimal_pos_y - current_pos_y;
             float sum = abs(x_diff) + abs(y_diff);
             if (sum > MAX_DISPLACEMENT){
+                // 1.
                 float ratio = MAX_DISPLACEMENT/sum;
-                operating_macro.pos_x += x_diff * ratio;
-                operating_macro.pos_y += y_diff * ratio;
+                operating_macro.pos_x += int(x_diff * ratio);
+                operating_macro.pos_y += int(y_diff * ratio);
+                // 2.
+                
             }
             else{
-                operating_macro.pos_x += x_diff;
-                operating_macro.pos_y += y_diff;
+                operating_macro.pos_x += int(x_diff);
+                operating_macro.pos_y += int(y_diff);
             }
-            
         }
     }
 
@@ -659,6 +668,5 @@ if(mlist.is_open()){
         mlist2.close();
         dmp.close();
     }
-
     return 0;
 }
