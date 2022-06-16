@@ -59,56 +59,56 @@ class Component{
 };
     
 class Pin{ // for def's PI and PO and lef's macro pin
-  public:
-    string name;
-    vector<pair<float, float>> pos_list; //pos_list[i].first = pos_x, pos_list[i].second = pos_y
-    // orientation ? (not sure if all the orientation would be North in all test cases)
-    Pin(){
-        name = "none";
-        pair<float, float> p1(0.0, 0.0);
-        pos_list.push_back(p1);
-    }
-    Pin(string na){
-        name = na;
-    }  
-    void addPinLoc(float px, float py){
-        pair<float, float> p1(px, py);
-        pos_list.push_back(p1);
-    }
-    bool operator==(const Pin & rhs){
-        return this->name == rhs.name;
-    }
-    ~Pin(){}
+    public:
+        string name;
+        vector<pair<float, float>> pos_list; //pos_list[i].first = pos_x, pos_list[i].second = pos_y
+        // orientation ? (not sure if all the orientation would be North in all test cases)
+        Pin(){
+            name = "none";
+            pair<float, float> p1(0.0, 0.0);
+            pos_list.push_back(p1);
+        }
+        Pin(string na){
+            name = na;
+        }  
+        void addPinLoc(float px, float py){
+            pair<float, float> p1(px, py);
+            pos_list.push_back(p1);
+        }
+        bool operator==(const Pin & rhs){
+            return this->name == rhs.name;
+        }
+        ~Pin(){};
 };
 
 class Component_type{
     public:
-    string name;
-    float width_x, width_y;
-    // vector<Pin> pin_list;
-    unordered_map<string, Pin> pin_list;
-    // OBS obstruction, probabaly need it but ignore it for now
-    Component_type(){
-        name = "none";
-        width_x = 0.0;
-        width_y = 0.0;
-    }
-    Component_type(string na){
-        name = na;
-        width_x = 0.0;
-        width_y = 0.0;
-    }
-    void setWidth(float wx, float wy){
-        width_x = wx;
-        width_y = wy;
-    }
-    void addPin(Pin pi){
-        pin_list[pi.name] = pi;
-    }
-    bool operator==(const Component_type & rhs){
-        return this->name == rhs.name;
-    }
-    ~Component_type(){};
+        string name;
+        float width_x, width_y;
+        // vector<Pin> pin_list;
+        unordered_map<string, Pin> pin_list;
+        // OBS obstruction, probably need it but ignore it for now
+        Component_type(){
+            name = "none";
+            width_x = 0.0;
+            width_y = 0.0;
+        }
+        Component_type(string na){
+            name = na;
+            width_x = 0.0;
+            width_y = 0.0;
+        }
+        void setWidth(float wx, float wy){
+            width_x = wx;
+            width_y = wy;
+        }
+        void addPin(Pin pi){
+            pin_list[pi.name] = pi;
+        }
+        bool operator==(const Component_type & rhs){
+            return this->name == rhs.name;
+        }
+        ~Component_type(){};
 };
 
 class Rect{ // a rectangle from (init_x, init_y) to (end_x, end_y)
@@ -386,7 +386,7 @@ int main(int argc, char* argv[]){
                         if(connection_dict.find(wire_name) == connection_dict.end()){ // the key is new to connection_dict
                             v1.push_back(p1);
                             connection_dict[wire_name] = v1;
-                        }else{ // the key is already exist
+                        }else{ // the key already exists
                             v1 = connection_dict[wire_name];
                             v1.push_back(p1);
                             connection_dict[wire_name] = v1;
@@ -529,8 +529,16 @@ int main(int argc, char* argv[]){
     }
     
 
-    /********** force-based approach **********/
-
+    /********** force-directed approach **********/
+    for (int i=0; i<num_macros; i++){ // move all macros
+        int wire_total_length_x = 0, wire_total_length_y = 0;
+        for (int j=0; j<component_dict[available_macro[i]].pin_connection.size(); j++){ // consider all the connected components of the macro
+            wire = component_dict[available_macro[i]].pin_connection[j].second;
+            wire_total_length_x += wire.x;
+            wire_total_length_y += wire.y;
+            
+        }
+    }
     /********** determine final Macro location **********/
     for (int iteration=0; iteration<ITERATION; iteration++){
         for (unordered_map<string, Component> :: iterator macro_itr = component_dict.begin() ; macro_itr != component_dict.end() ; macro_itr++){
