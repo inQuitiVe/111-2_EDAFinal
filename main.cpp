@@ -59,6 +59,9 @@ bool check_overlap(float a_pos_x, float a_pos_y, float a_width_x, float a_width_
     if ((b_top_bound >= a_down_bound && b_top_bound <= a_top_bound) || (b_down_bound >= a_down_bound && b_down_bound <= a_top_bound))
         if ((b_left_bound >= a_left_bound && b_left_bound <= a_right_bound) || (b_right_bound >= a_left_bound && b_right_bound <= a_right_bound))
             return true;
+    if ((a_top_bound >= b_down_bound && a_top_bound <= b_top_bound) || (a_down_bound >= b_down_bound && a_down_bound <= b_top_bound))
+        if ((a_left_bound >= b_left_bound && a_left_bound <= b_right_bound) || (a_right_bound >= b_left_bound && a_right_bound <= b_right_bound))
+            return true;
     return false;
 }
 
