@@ -29,12 +29,12 @@ orientation ori_list[4] = {North, FlipNorth, South, FlipSouth};
 
 void transorient(pair <float, float> compnt_pos, pair <float, float> compnt_size, pair <float, float> pin_pos, orientation orient, float* pin_abs_pos){
     if (orient == North){
-        pin_abs_pos[0] = compnt_pos.first+pin_pos.first;
-        pin_abs_pos[1] = compnt_pos.second+pin_pos.second;
+        pin_abs_pos[0] = compnt_pos.first + pin_pos.first;
+        pin_abs_pos[1] = compnt_pos.second + pin_pos.second;
     }
     if (orient == FlipNorth){
         pin_abs_pos[0] = compnt_pos.first + compnt_size.first - pin_pos.first;
-        pin_abs_pos[1] =  compnt_pos.second + pin_pos.second;
+        pin_abs_pos[1] = compnt_pos.second + pin_pos.second;
     }
     if (orient == South){
         pin_abs_pos[0] = compnt_pos.first + pin_pos.first;
@@ -581,8 +581,8 @@ int main(int argc, char* argv[]){
                         
                         for (int i=0; i<4; i++){
                             transorient(macro_pos, macro_size, mctype_dict[operating_macro_name].pin_list[connect_pin].pos_list[0], ori_list[i], macro_pin_relative_pos);
-                            xaccum[i]  +=  pin_abs_pos[0] - macro_pin_relative_pos[0];
-                            yaccum[i]  +=  pin_abs_pos[1] - macro_pin_relative_pos[1];   
+                            xaccum[i]  +=  (pin_abs_pos[0] - macro_pin_relative_pos[0]);
+                            yaccum[i]  +=  (pin_abs_pos[1] - macro_pin_relative_pos[1]);   
                         }
                     }
                 }
@@ -600,7 +600,7 @@ int main(int argc, char* argv[]){
                     xaccum[i] /= operating_connection.size();
                     yaccum[i] /= operating_connection.size();
                     if ((abs(optimal_pos_x - current_pos_x) +  abs(optimal_pos_y - current_pos_y)) > 
-                        (abs(   xaccum[i]  - current_pos_x) +  abs(yaccum[i]  - current_pos_y))){
+                        (abs(   xaccum[i]  - current_pos_x) +  abs(   yaccum[i]  - current_pos_y))){
                         optimal_pos_x = xaccum[i];
                         optimal_pos_y = yaccum[i];
                         optimal_orient = ori_list[i];
@@ -609,23 +609,64 @@ int main(int argc, char* argv[]){
                 
                 float x_diff = optimal_pos_x - initial_pos_x;
                 float y_diff = optimal_pos_y - initial_pos_y;
-                float sum = abs(x_diff) + abs(y_diff);
+                float optimal_total_displacement = abs(x_diff) + abs(y_diff);
                 float buffer_pos_x, buffer_pos_y;
-                if (sum > MAX_DISPLACEMENT){
-                    // 1.
-                    float ratio = MAX_DISPLACEMENT/sum;
+                if (optimal_total_displacement > MAX_DISPLACEMENT){ // consider the constraint MAX_DISPLACEMENT
+                    // 1. ratio method
+                    /*
+                    float ratio = MAX_DISPLACEMENT/optimal_total_displacement;
                     buffer_pos_x = int(floor(x_diff * ratio)) + initial_pos_x;
                     buffer_pos_y = int(floor(y_diff * ratio)) + initial_pos_y;
-                    // 2.
-                    /*
-                    float diff = abs(x_diff) + abs(y_diff);
-                    if (x_diff > y_diff){
-                        buffer_pos_x = int(floor(x_diff + )) + initial_pos_x;
-                        buffer_pos_y = int(floor(y_diff - )) + initial_pos_y;
-                    }
                     */
+                    
+                    // 2. move the macro to the position with the same x&y remaining distance first, then move macro along x&y axis with equal step
+                    float xy_diff = abs(x_diff) - abs(y_diff);
+                    float remain_displacement_x, remain_displacement_y;
+                    if (optimal_total_displacement - abs(xy_diff) > MAX_DISPLACEMENT){
+                        remain_displacement_x = (MAX_DISPLACEMENT - abs(xy_diff))/2;
+                        remain_displacement_y = (MAX_DISPLACEMENT - abs(xy_diff))/2;
+                    }
+                    else{
+                        remain_displacement_x = (optimal_total_displacement - abs(xy_diff))/2;
+                        remain_displacement_y = (optimal_total_displacement - abs(xy_diff))/2;
+                    }
+
+                    if (xy_diff >= MAX_DISPLACEMENT){
+                        if (x_diff > 0)
+                            buffer_pos_x = initial_pos_x + MAX_DISPLACEMENT;
+                        else
+                            buffer_pos_x = initial_pos_x - MAX_DISPLACEMENT;
+                        buffer_pos_y = initial_pos_y;
+                    }
+                    else if (xy_diff <= -1*MAX_DISPLACEMENT){
+                        if (y_diff > 0)
+                            buffer_pos_y = initial_pos_y + MAX_DISPLACEMENT;
+                        else
+                            buffer_pos_y = initial_pos_y - MAX_DISPLACEMENT;
+                        buffer_pos_x = initial_pos_x;
+                    }
+                    else if (xy_diff > 0){
+                        if (x_diff > 0)
+                            buffer_pos_x = initial_pos_x + xy_diff + remain_displacement_x;
+                        else
+                            buffer_pos_x = initial_pos_x - xy_diff - remain_displacement_x;
+                        if (y_diff > 0)
+                            buffer_pos_y = initial_pos_y + remain_displacement_y;
+                        else
+                            buffer_pos_y = initial_pos_y - remain_displacement_y;
+                    }
+                    else{
+                        if (y_diff > 0)
+                            buffer_pos_y = initial_pos_y + xy_diff + remain_displacement_y;
+                        else
+                            buffer_pos_y = initial_pos_y - xy_diff - remain_displacement_y;
+                        if (x_diff > 0)
+                            buffer_pos_x = initial_pos_x + remain_displacement_x;
+                        else
+                            buffer_pos_x = initial_pos_x - remain_displacement_x;
+                    }
                 }
-                else{
+                else{ // directly move the macro to the optimal position
                     buffer_pos_x = int(floor(x_diff)) + initial_pos_x;
                     buffer_pos_y = int(floor(y_diff)) + initial_pos_y;
                 }
