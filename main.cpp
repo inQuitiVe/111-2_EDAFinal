@@ -589,10 +589,10 @@ int main(int argc, char* argv[]){
 
                 // iteration 的 目的是destination 的pinpos可能會因為 macro移動 而改變，但平常計算仍需要用initial pos來計算
                 // find optimal pos_x, pos_y, and orient
-                float optimal_pos_x = INT_MAX;
+                float optimal_pos_x = INT_MAX; // int?
                 float optimal_pos_y = INT_MAX;
                 orientation optimal_orient = North;
-                float current_pos_x = operating_macro->pos_x;
+                float current_pos_x = operating_macro->pos_x; // int?
                 float current_pos_y = operating_macro->pos_y;
                 float initial_pos_x = operating_macro->init_pos_x;
                 float initial_pos_y = operating_macro->init_pos_y;
@@ -610,7 +610,7 @@ int main(int argc, char* argv[]){
                 float x_diff = optimal_pos_x - initial_pos_x;
                 float y_diff = optimal_pos_y - initial_pos_y;
                 float optimal_total_displacement = abs(x_diff) + abs(y_diff);
-                float buffer_pos_x, buffer_pos_y;
+                float buffer_pos_x, buffer_pos_y; // buffer_pos_x, buffer_pos_y: int?
                 if (optimal_total_displacement > MAX_DISPLACEMENT){ // consider the constraint MAX_DISPLACEMENT
                     // 1. ratio method
                     /*
@@ -639,23 +639,23 @@ int main(int argc, char* argv[]){
                     }
                     else if (xy_diff > 0){
                         if (x_diff > 0)
-                            buffer_pos_x = initial_pos_x + xy_diff + remain_displacement;
+                            buffer_pos_x = initial_pos_x + int(floor(xy_diff + remain_displacement));
                         else
-                            buffer_pos_x = initial_pos_x - xy_diff - remain_displacement;
+                            buffer_pos_x = initial_pos_x - int(floor(xy_diff + remain_displacement));
                         if (y_diff > 0)
-                            buffer_pos_y = initial_pos_y + remain_displacement;
+                            buffer_pos_y = initial_pos_y + int(floor(remain_displacement));
                         else
-                            buffer_pos_y = initial_pos_y - remain_displacement;
+                            buffer_pos_y = initial_pos_y - int(floor(remain_displacement));
                     }
                     else{
                         if (y_diff > 0)
-                            buffer_pos_y = initial_pos_y + xy_diff + remain_displacement;
+                            buffer_pos_y = initial_pos_y + int(floor(xy_diff + remain_displacement));
                         else
-                            buffer_pos_y = initial_pos_y - xy_diff - remain_displacement;
+                            buffer_pos_y = initial_pos_y - int(floor(xy_diff + remain_displacement));
                         if (x_diff > 0)
-                            buffer_pos_x = initial_pos_x + remain_displacement;
+                            buffer_pos_x = initial_pos_x + int(floor(remain_displacement));
                         else
-                            buffer_pos_x = initial_pos_x - remain_displacement;
+                            buffer_pos_x = initial_pos_x - int(floor(remain_displacement));
                     }
                 }
                 else{ // directly move the macro to the optimal position
@@ -673,8 +673,8 @@ int main(int argc, char* argv[]){
                     }
                 }
                 if (!overlap){
-                    operating_macro->pos_x = buffer_pos_x;
-                    operating_macro->pos_y = buffer_pos_y;
+                    operating_macro->pos_x = buffer_pos_x; // pos_x: int?
+                    operating_macro->pos_y = buffer_pos_y; // pos_y: int?
                 }
             }
         }
