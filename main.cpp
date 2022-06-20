@@ -622,14 +622,8 @@ int main(int argc, char* argv[]){
                     // 2. move the macro to the position with the same x&y remaining distance first, then move macro along x&y axis with equal step
                     float xy_diff = abs(x_diff) - abs(y_diff);
                     float remain_displacement_x, remain_displacement_y;
-                    if (optimal_total_displacement - abs(xy_diff) > MAX_DISPLACEMENT){
-                        remain_displacement_x = (MAX_DISPLACEMENT - abs(xy_diff))/2;
-                        remain_displacement_y = (MAX_DISPLACEMENT - abs(xy_diff))/2;
-                    }
-                    else{
-                        remain_displacement_x = (optimal_total_displacement - abs(xy_diff))/2;
-                        remain_displacement_y = (optimal_total_displacement - abs(xy_diff))/2;
-                    }
+                    remain_displacement_x = (MAX_DISPLACEMENT - abs(xy_diff))/2;
+                    remain_displacement_y = (MAX_DISPLACEMENT - abs(xy_diff))/2;
 
                     if (xy_diff >= MAX_DISPLACEMENT){
                         if (x_diff > 0)
