@@ -5,6 +5,7 @@
 // .\tran.exe case01.dmp case01.pl out.pl
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -97,6 +98,7 @@ int main(int argc, char* argv[]){
 
     /********** write output file **********/
     if(pl.is_open() && out.is_open()){
+        out << fixed << setprecision(0);
         string cur_state = "INIT";
         vector<string> words, sec_words;
         string first_line, second_line;
@@ -114,7 +116,7 @@ int main(int argc, char* argv[]){
             if(it == placement_dict.end()) // components no need to be modified
                 out << line << "\n";
             else // modify pos_x, pos_y, orient according to placement_dict
-                out << word << " " << placement_dict[word].pos_x << " " << placement_dict[word].pos_y << " : " << placement_dict[word].orient << "\n";    
+                out << word << " " << placement_dict[word].pos_x << " " << placement_dict[word].pos_y << " : " << placement_dict[word].orient << " /FIXED\n";    
         }
         pl.close();
         out.close();

@@ -9,6 +9,7 @@ Files In The Zip File:
         - 
 
 How To Compile:
-
+g++ main.cpp -o DMP
 
 How To Run:
+./DMP caseOO.v caseOO.lef caseOO.def caseOO.mlist caseOO.txt caseOO.dmp
