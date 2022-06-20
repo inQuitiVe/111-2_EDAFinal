@@ -621,9 +621,7 @@ int main(int argc, char* argv[]){
                     
                     // 2. move the macro to the position with the same x&y remaining distance first, then move macro along x&y axis with equal step
                     float xy_diff = abs(x_diff) - abs(y_diff);
-                    float remain_displacement_x, remain_displacement_y;
-                    remain_displacement_x = (MAX_DISPLACEMENT - abs(xy_diff))/2;
-                    remain_displacement_y = (MAX_DISPLACEMENT - abs(xy_diff))/2;
+                    float remain_displacement = (MAX_DISPLACEMENT - abs(xy_diff))/2;
 
                     if (xy_diff >= MAX_DISPLACEMENT){
                         if (x_diff > 0)
@@ -641,23 +639,23 @@ int main(int argc, char* argv[]){
                     }
                     else if (xy_diff > 0){
                         if (x_diff > 0)
-                            buffer_pos_x = initial_pos_x + xy_diff + remain_displacement_x;
+                            buffer_pos_x = initial_pos_x + xy_diff + remain_displacement;
                         else
-                            buffer_pos_x = initial_pos_x - xy_diff - remain_displacement_x;
+                            buffer_pos_x = initial_pos_x - xy_diff - remain_displacement;
                         if (y_diff > 0)
-                            buffer_pos_y = initial_pos_y + remain_displacement_y;
+                            buffer_pos_y = initial_pos_y + remain_displacement;
                         else
-                            buffer_pos_y = initial_pos_y - remain_displacement_y;
+                            buffer_pos_y = initial_pos_y - remain_displacement;
                     }
                     else{
                         if (y_diff > 0)
-                            buffer_pos_y = initial_pos_y + xy_diff + remain_displacement_y;
+                            buffer_pos_y = initial_pos_y + xy_diff + remain_displacement;
                         else
-                            buffer_pos_y = initial_pos_y - xy_diff - remain_displacement_y;
+                            buffer_pos_y = initial_pos_y - xy_diff - remain_displacement;
                         if (x_diff > 0)
-                            buffer_pos_x = initial_pos_x + remain_displacement_x;
+                            buffer_pos_x = initial_pos_x + remain_displacement;
                         else
-                            buffer_pos_x = initial_pos_x - remain_displacement_x;
+                            buffer_pos_x = initial_pos_x - remain_displacement;
                     }
                 }
                 else{ // directly move the macro to the optimal position
