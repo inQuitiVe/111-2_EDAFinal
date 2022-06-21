@@ -663,6 +663,16 @@ int main(int argc, char* argv[]){
                     buffer_pos_y = int(floor(y_diff)) + initial_pos_y;
                 }
 
+                // check if the macro is in the boundary of the chip and modify the position if it is not
+                if (buffer_pos_x < diearea.init_x)
+                    buffer_pos_x = diearea.init_x;
+                else if (buffer_pos_x + mctype_dict[operating_macro_name].width_x > diearea.end_x)
+                    buffer_pos_x = diearea.end_x - mctype_dict[operating_macro_name].width_x;
+                if (buffer_pos_y < diearea.init_y)
+                    buffer_pos_y = diearea.init_y;
+                else if (buffer_pos_y + mctype_dict[operating_macro_name].width_y > diearea.end_y)
+                    buffer_pos_y = diearea.end_y - mctype_dict[operating_macro_name].width_y;
+
                 bool overlap = false;
                 for(int overlap_itr = 0; macro_itr != available_macro.size(); macro_itr++){
                     if (overlap_itr != macro_itr){ // 確認要檢查的macro不是自己，畢竟自己會跟自己重疊
