@@ -13,10 +13,13 @@
 #include <climits>
 #include <ctype.h> // for isalpha()
 #include <cmath>
+#include <time.h>
 
 #define ITERATION 1
+#define CAL_TIME  1 // set to 0 if don't want to measure execution time 
 
 using namespace std;
+typedef pair<float, float> float_pair;
 
 enum orientation{
     North,
@@ -26,8 +29,9 @@ enum orientation{
 };
                     
 orientation ori_list[4] = {North, FlipNorth, South, FlipSouth};
+float_pair origin(0.0, 0.0);
 
-void transorient(pair <float, float> compnt_pos, pair <float, float> compnt_size, pair <float, float> pin_pos, orientation orient, float* pin_abs_pos){
+void transorient(float_pair compnt_pos, float_pair compnt_size, float_pair pin_pos, orientation orient, float* pin_abs_pos){
     if (orient == North){
         pin_abs_pos[0] = compnt_pos.first + pin_pos.first;
         pin_abs_pos[1] = compnt_pos.second + pin_pos.second;
@@ -108,18 +112,18 @@ class Component{
 class Pin{ // for def's PI and PO and lef's macro pin
     public:
         string name;
-        vector<pair<float, float>> pos_list; //pos_list[i].first = pos_x, pos_list[i].second = pos_y
+        vector<float_pair> pos_list; //pos_list[i].first = pos_x, pos_list[i].second = pos_y
         // orientation ? (not sure if all the orientation would be North in all test cases)
         Pin(){
             name = "none";
-            pair<float, float> p1(0.0, 0.0);
+            float_pair p1(0.0, 0.0);
             pos_list.push_back(p1);
         }
         Pin(string na){
             name = na;
         }  
         void addPinLoc(float px, float py){
-            pair<float, float> p1(px, py);
+            float_pair p1(px, py);
             pos_list.push_back(p1);
         }
         bool operator==(const Pin & rhs){
@@ -220,12 +224,16 @@ int main(int argc, char* argv[]){
     unordered_map<string, vector<pair<string, string>>> connection_dict; // .first is component_name .second is pin_name
     unordered_map<string, bool> stored_wire;
     unordered_map<string, bool> is_primary_io;
-    vector<string> available_macro;
+    vector<string> movable_macro;
     vector<string> all_macro;
     Rect diearea(0, 0, 0, 0);
 
+    /********** variables related to time **********/
+    time_t start, after_input, after_algo, end;
+
     /********** read input files **********/
     // readInputFile(def, def_state);
+    time(&start);
     cout << "Read Input Files\n";
     if(def.is_open()){
         string cur_state = "INIT";
@@ -313,7 +321,7 @@ int main(int argc, char* argv[]){
             }else if(cur_state == "COMPONENTS"){
                 splitStringToWords(line, words);
                 num_macros = stoi(words[1]);
-                available_macro.reserve(num_macros); // reserving space for # movable macros
+                movable_macro.reserve(num_macros); // reserving space for # movable macros
                 all_macro.reserve(num_macros);
                 for(int i=0; i<num_macros; ++i){
                     getline(mlist, first_line);
@@ -324,7 +332,7 @@ int main(int argc, char* argv[]){
                     // FIXED or PLACED: sec_words[7]
                     if(sec_words[7] == "PLACED"){
                         component_dict[words[4]].movable = true; // update bool movable from false to true
-                        available_macro.push_back(words[4]);
+                        movable_macro.push_back(words[4]);
                     }
                     
                     component_dict[words[4]].pos_x = stof(sec_words[9]);  // update pos_x
@@ -335,7 +343,6 @@ int main(int argc, char* argv[]){
                 }
                 break; // end of reading mlist
             }
-            
         }
     }
 
@@ -343,7 +350,6 @@ int main(int argc, char* argv[]){
         string cur_state = "INIT";
         vector<string> words;
         while(getline(verilog, line)){
-            // word = line.substr(0, line.find(" ")); // first word of the sentense
             // switching cur_state
             if(cur_state == "INIT" && line == "// Start cells"){
                 getline(verilog, line); // get the first line of cells
@@ -356,7 +362,7 @@ int main(int argc, char* argv[]){
             }else if(cur_state == "CELLS"){
                 splitStringToWords(line, words);
                 int pin_num = words.size() - 4;
-                string comp_name = words[1];
+                string comp_name = words[1]; // exclude mctype_name, macro_name, (, and );
                 for(int i=0; i<pin_num; ++i){
                     int left_brace_pos = words[i+3].find("(");
                     int right_brace_pos = words[i+3].find(")");
@@ -374,7 +380,6 @@ int main(int argc, char* argv[]){
         }
         verilog.close();
     }
-
 
     if(verilog2.is_open()){
         string cur_state = "INIT";
@@ -522,14 +527,15 @@ int main(int argc, char* argv[]){
         MAX_DISPLACEMENT *= def_scalar; // change to the same unit
         txt.close();
     }
+    time(&after_input);
     
 
     /********** force-directed approach **********/
     /*
     for (int i=0; i<num_macros; i++){ // move all macros
         int wire_total_length_x = 0, wire_total_length_y = 0;
-        for (int j=0; j<component_dict[available_macro[i]].pin_connection.size(); j++){ // consider all the connected components of the macro
-            wire = component_dict[available_macro[i]].pin_connection[j].second;
+        for (int j=0; j<component_dict[movable_macro[i]].pin_connection.size(); j++){ // consider all the connected components of the macro
+            wire = component_dict[movable_macro[i]].pin_connection[j].second;
             wire_total_length_x += wire.x;
             wire_total_length_y += wire.y;
             
@@ -541,164 +547,176 @@ int main(int argc, char* argv[]){
     /********** determine final Macro location **********/
     cout << "Determine Macro Location...\n";
     for (int iteration=0; iteration<ITERATION; iteration++){
-        for (int macro_itr = 0; macro_itr != available_macro.size(); macro_itr++){
+        for (int macro_itr=0; macro_itr!=movable_macro.size(); macro_itr++){
             cout << "\tMacro #" << macro_itr;
-            if (component_dict[available_macro[macro_itr]].movable){
-                float xaccum[4] = {0,0,0,0}; //N, FN, S, FS
-                float yaccum[4] = {0,0,0,0};
-                string operating_macro_name = available_macro[macro_itr];
-                Component* operating_macro = &component_dict[operating_macro_name];
-                vector<pair<string, string>> operating_connection = operating_macro->pin_connection;
-                for (int pin_idx = 0; pin_idx < operating_connection.size(); pin_idx++){
-                    string connect_pin = operating_connection[pin_idx].first;
-                    string connect_wire = operating_connection[pin_idx].second;
-                    vector<pair<string, string>> wire_to_all_connections = connection_dict[connect_wire];
+            
+            float xaccum[4] = {0,0,0,0}; //N, FN, S, FS
+            float yaccum[4] = {0,0,0,0};
+            string operating_macro_name = movable_macro[macro_itr];
+            Component* operating_macro = &component_dict[operating_macro_name];
+            vector<pair<string, string>> operating_connection = operating_macro->pin_connection;
+            for (int pin_idx=0; pin_idx<operating_connection.size(); pin_idx++){
+                string connect_pin  = operating_connection[pin_idx].first;
+                string connect_wire = operating_connection[pin_idx].second;
+                vector<pair<string, string>> wire_to_all_connections = connection_dict[connect_wire];
+                Component_type operating_macro_type = mctype_dict[operating_macro_name];
 
-                    pair <float, float> macro_pos(0.0, 0.0);
-                    pair <float, float> macro_size(mctype_dict[operating_macro_name].width_x, mctype_dict[operating_macro_name].width_y);
-                    float macro_pin_relative_pos[2];
-
-                    if(is_primary_io.find(connect_wire) != is_primary_io.end()){
-                        for (int i=0; i<4; i++){
-                                transorient(macro_pos, macro_size, mctype_dict[operating_macro_name].pin_list[connect_pin].pos_list[0], ori_list[i], macro_pin_relative_pos);
-                                xaccum[i]  +=  pin_dict[connect_wire].pos_list[0].first - macro_pin_relative_pos[0];
-                                yaccum[i]  +=  pin_dict[connect_wire].pos_list[0].second - macro_pin_relative_pos[1];   
-                            }
-                    }
-
-                    for (int desti_idx = 0; desti_idx != wire_to_all_connections.size(); desti_idx++){
-                        string desti_macro_name = wire_to_all_connections[desti_idx].first;
-                        if (desti_macro_name == operating_macro->name) continue;
-                        
-                        // 相對距離 = 接到的pin的絕對位置 - 相對macro的pin位置
-                        Component desti_macro = component_dict[desti_macro_name];
-                        string desti_pin_name = wire_to_all_connections[desti_idx].second;
-
-                        pair <float, float> compnt_pos (desti_macro.pos_x, desti_macro.pos_y);
-                        pair <float, float> compnt_size(mctype_dict[desti_macro_name].width_x, mctype_dict[desti_macro_name].width_y);
-                        
-                        float pin_abs_pos[2];
-                        transorient(compnt_pos, compnt_size, mctype_dict[desti_macro_name].pin_list[desti_pin_name].pos_list[0], desti_macro.orient, pin_abs_pos);
-
-
-                        
-                        for (int i=0; i<4; i++){
-                            transorient(macro_pos, macro_size, mctype_dict[operating_macro_name].pin_list[connect_pin].pos_list[0], ori_list[i], macro_pin_relative_pos);
-                            xaccum[i]  +=  (pin_abs_pos[0] - macro_pin_relative_pos[0]);
-                            yaccum[i]  +=  (pin_abs_pos[1] - macro_pin_relative_pos[1]);   
-                        }
-                    }
+                float_pair macro_size(operating_macro_type.width_x, operating_macro_type.width_y);
+                // calculate macro_pin_relative_pos
+                float macro_pin_relative_pos[4][2];
+                for (int i=0; i<4; i++){
+                    transorient(origin, macro_size, operating_macro_type.pin_list[connect_pin].pos_list[0], ori_list[i], macro_pin_relative_pos[i]);
                 }
 
-                // iteration 的 目的是destination 的pinpos可能會因為 macro移動 而改變，但平常計算仍需要用initial pos來計算
-                // find optimal pos_x, pos_y, and orient
-                float optimal_pos_x = INT_MAX; // int?
-                float optimal_pos_y = INT_MAX;
-                orientation optimal_orient = North;
-                float current_pos_x = operating_macro->pos_x; // int?
-                float current_pos_y = operating_macro->pos_y;
-                float initial_pos_x = operating_macro->init_pos_x;
-                float initial_pos_y = operating_macro->init_pos_y;
-                for(int i=0; i<4; ++i){ //i=0:North, i=1:FlipNorth, i=2:South, i=3:FlipSouth, 
-                    xaccum[i] /= operating_connection.size();
-                    yaccum[i] /= operating_connection.size();
-                    if ((abs(optimal_pos_x - current_pos_x) +  abs(optimal_pos_y - current_pos_y)) > 
-                        (abs(   xaccum[i]  - current_pos_x) +  abs(   yaccum[i]  - current_pos_y))){
-                        optimal_pos_x = xaccum[i];
-                        optimal_pos_y = yaccum[i];
-                        optimal_orient = ori_list[i];
+                if(is_primary_io.find(connect_wire) != is_primary_io.end()){ // pin is PI/PO
+                    for (int i=0; i<4; i++){
+                        xaccum[i]  +=  (pin_dict[connect_wire].pos_list[0].first  - macro_pin_relative_pos[i][0]);
+                        yaccum[i]  +=  (pin_dict[connect_wire].pos_list[0].second - macro_pin_relative_pos[i][1]);   
                     }
                 }
                 
-                float x_diff = optimal_pos_x - initial_pos_x;
-                float y_diff = optimal_pos_y - initial_pos_y;
-                float optimal_total_displacement = abs(x_diff) + abs(y_diff);
-                cout << "\tMove " << optimal_total_displacement << " without constraint. ";
-                float buffer_pos_x, buffer_pos_y; // buffer_pos_x, buffer_pos_y: int?
-                if (optimal_total_displacement > MAX_DISPLACEMENT){ // consider the constraint MAX_DISPLACEMENT
-                    // 1. ratio method
-                    /*
-                    float ratio = MAX_DISPLACEMENT/optimal_total_displacement;
-                    buffer_pos_x = int(floor(x_diff * ratio)) + initial_pos_x;
-                    buffer_pos_y = int(floor(y_diff * ratio)) + initial_pos_y;
-                    */
+                for (int desti_idx = 0; desti_idx != wire_to_all_connections.size(); desti_idx++){
+                    string desti_macro_name = wire_to_all_connections[desti_idx].first;
+                    if (desti_macro_name == (operating_macro->name)) 
+                        continue;
                     
-                    // 2. move the macro to the position with the same x&y remaining distance first, then move macro along x&y axis with equal step
-                    float xy_diff = abs(x_diff) - abs(y_diff);
-                    float remain_displacement = (MAX_DISPLACEMENT - abs(xy_diff))/2;
+                    // 相對距離 = 接到的pin的絕對位置 - 相對macro的pin位置
+                    Component desti_macro = component_dict[desti_macro_name];
+                    string desti_pin_name = wire_to_all_connections[desti_idx].second;
 
-                    if (xy_diff >= MAX_DISPLACEMENT){
-                        if (x_diff > 0)
-                            buffer_pos_x = initial_pos_x + MAX_DISPLACEMENT;
-                        else
-                            buffer_pos_x = initial_pos_x - MAX_DISPLACEMENT;
-                        buffer_pos_y = initial_pos_y;
-                    }
-                    else if (xy_diff <= -1*MAX_DISPLACEMENT){
-                        if (y_diff > 0)
-                            buffer_pos_y = initial_pos_y + MAX_DISPLACEMENT;
-                        else
-                            buffer_pos_y = initial_pos_y - MAX_DISPLACEMENT;
-                        buffer_pos_x = initial_pos_x;
-                    }
-                    else if (xy_diff > 0){
-                        if (x_diff > 0)
-                            buffer_pos_x = initial_pos_x + int(floor(xy_diff + remain_displacement));
-                        else
-                            buffer_pos_x = initial_pos_x - int(floor(xy_diff + remain_displacement));
-                        if (y_diff > 0)
-                            buffer_pos_y = initial_pos_y + int(floor(remain_displacement));
-                        else
-                            buffer_pos_y = initial_pos_y - int(floor(remain_displacement));
-                    }
-                    else{
-                        if (y_diff > 0)
-                            buffer_pos_y = initial_pos_y + int(floor(xy_diff + remain_displacement));
-                        else
-                            buffer_pos_y = initial_pos_y - int(floor(xy_diff + remain_displacement));
-                        if (x_diff > 0)
-                            buffer_pos_x = initial_pos_x + int(floor(remain_displacement));
-                        else
-                            buffer_pos_x = initial_pos_x - int(floor(remain_displacement));
-                    }
-                }
-                else{ // directly move the macro to the optimal position
-                    buffer_pos_x = int(floor(x_diff)) + initial_pos_x;
-                    buffer_pos_y = int(floor(y_diff)) + initial_pos_y;
-                }
+                    float_pair compnt_pos (desti_macro.pos_x, desti_macro.pos_y);
+                    float_pair compnt_size(mctype_dict[desti_macro_name].width_x, mctype_dict[desti_macro_name].width_y);
+                    
+                    float pin_abs_pos[2];
+                    transorient(compnt_pos, compnt_size, mctype_dict[desti_macro_name].pin_list[desti_pin_name].pos_list[0], desti_macro.orient, pin_abs_pos);
 
-                // check if the macro is in the boundary of the chip and modify the position if it is not
-                if (buffer_pos_x < diearea.init_x)
-                    buffer_pos_x = diearea.init_x;
-                else if (buffer_pos_x + mctype_dict[operating_macro_name].width_x > diearea.end_x)
-                    buffer_pos_x = diearea.end_x - mctype_dict[operating_macro_name].width_x;
-                if (buffer_pos_y < diearea.init_y)
-                    buffer_pos_y = diearea.init_y;
-                else if (buffer_pos_y + mctype_dict[operating_macro_name].width_y > diearea.end_y)
-                    buffer_pos_y = diearea.end_y - mctype_dict[operating_macro_name].width_y;
-
-                bool overlap = false;
-                for(int overlap_itr = 0; overlap_itr != available_macro.size(); overlap_itr++){
-                    if (overlap_itr != macro_itr){ // 確認要檢查的macro不是自己，畢竟自己會跟自己重疊
-                        if (check_overlap(buffer_pos_x, buffer_pos_y, mctype_dict[operating_macro_name].width_x, mctype_dict[operating_macro_name].width_y, component_dict[available_macro[overlap_itr]].pos_x, component_dict[available_macro[overlap_itr]].pos_y, mctype_dict[component_dict[available_macro[overlap_itr]].component_type].width_x, mctype_dict[component_dict[available_macro[overlap_itr]].component_type].width_y)) {
-                            overlap = true;
-                            break;
-                        }
+                    for (int i=0; i<4; i++){
+                        xaccum[i]  +=  (pin_abs_pos[0] - macro_pin_relative_pos[i][0]);
+                        yaccum[i]  +=  (pin_abs_pos[1] - macro_pin_relative_pos[i][1]);   
                     }
                 }
-                if (!overlap){
-                    operating_macro->pos_x = buffer_pos_x; // pos_x: int?
-                    operating_macro->pos_y = buffer_pos_y; // pos_y: int?
-                    cout << "\t<- Update This Macro";
-                }
-                cout << '\n';
             }
+
+            // iteration的目的是destination的pinpos可能會因為macro移動而改變，但平常計算仍需要用initial pos來計算
+            // find optimal pos_x, pos_y, and orient
+            float optimal_pos_x = INT_MAX; // int?
+            float optimal_pos_y = INT_MAX;
+            orientation optimal_orient = North;
+            float current_pos_x = operating_macro->pos_x; // int?
+            float current_pos_y = operating_macro->pos_y;
+            float initial_pos_x = operating_macro->init_pos_x;
+            float initial_pos_y = operating_macro->init_pos_y;
+            for(int i=0; i<4; ++i){ //i=0:North, i=1:FlipNorth, i=2:South, i=3:FlipSouth, 
+                xaccum[i] /= operating_connection.size();
+                yaccum[i] /= operating_connection.size();
+                if ((abs(optimal_pos_x - current_pos_x) +  abs(optimal_pos_y - current_pos_y)) > 
+                    (abs(   xaccum[i]  - current_pos_x) +  abs(   yaccum[i]  - current_pos_y))){
+                    optimal_pos_x = xaccum[i];
+                    optimal_pos_y = yaccum[i];
+                    optimal_orient = ori_list[i];
+                }
+            }
+            
+            float x_diff = optimal_pos_x - initial_pos_x;
+            float y_diff = optimal_pos_y - initial_pos_y;
+            float optimal_total_displacement = abs(x_diff) + abs(y_diff);
+            cout << "\tMove " << optimal_total_displacement << " without constraint. ";
+            float buffer_pos_x, buffer_pos_y; // buffer_pos_x, buffer_pos_y: int?
+            if (optimal_total_displacement > MAX_DISPLACEMENT){ // consider the constraint MAX_DISPLACEMENT
+                cout << "Consider constraint:\t";
+                // 1. ratio method
+                /*
+                float ratio = MAX_DISPLACEMENT/optimal_total_displacement;
+                buffer_pos_x = int(floor(x_diff * ratio)) + initial_pos_x;
+                buffer_pos_y = int(floor(y_diff * ratio)) + initial_pos_y;
+                */
+                
+                // 2. move the macro to the position with the same x&y remaining distance first, then move macro along x&y axis with equal step
+                float xy_diff = abs(x_diff) - abs(y_diff);
+                float remain_displacement = (MAX_DISPLACEMENT - abs(xy_diff))/2;
+
+                if (xy_diff >= MAX_DISPLACEMENT){
+                    if (x_diff > 0)
+                        buffer_pos_x = initial_pos_x + MAX_DISPLACEMENT;
+                    else
+                        buffer_pos_x = initial_pos_x - MAX_DISPLACEMENT;
+                    buffer_pos_y = initial_pos_y;
+                }
+                else if (xy_diff <= -1*MAX_DISPLACEMENT){
+                    if (y_diff > 0)
+                        buffer_pos_y = initial_pos_y + MAX_DISPLACEMENT;
+                    else
+                        buffer_pos_y = initial_pos_y - MAX_DISPLACEMENT;
+                    buffer_pos_x = initial_pos_x;
+                }
+                else if (xy_diff > 0){
+                    if (x_diff > 0)
+                        buffer_pos_x = initial_pos_x + int(floor(xy_diff + remain_displacement));
+                    else
+                        buffer_pos_x = initial_pos_x - int(floor(xy_diff + remain_displacement));
+                    if (y_diff > 0)
+                        buffer_pos_y = initial_pos_y + int(floor(remain_displacement));
+                    else
+                        buffer_pos_y = initial_pos_y - int(floor(remain_displacement));
+                }
+                else{
+                    if (y_diff > 0)
+                        buffer_pos_y = initial_pos_y + int(floor(abs(xy_diff) + remain_displacement));
+                    else
+                        buffer_pos_y = initial_pos_y - int(floor(abs(xy_diff) + remain_displacement));
+                    if (x_diff > 0)
+                        buffer_pos_x = initial_pos_x + int(floor(remain_displacement));
+                    else
+                        buffer_pos_x = initial_pos_x - int(floor(remain_displacement));
+                }
+            }
+            else{ // directly move the macro to the optimal position
+                buffer_pos_x = int(floor(x_diff)) + initial_pos_x;
+                buffer_pos_y = int(floor(y_diff)) + initial_pos_y;
+            }
+
+            // check if the macro is in the boundary of the chip and modify the position if it is not
+            if (buffer_pos_x < diearea.init_x){
+                cout << "\tOut of the left boundary!";
+                buffer_pos_x = diearea.init_x;
+            }
+            else if (buffer_pos_x + mctype_dict[operating_macro_name].width_x > diearea.end_x){
+                cout << "\tOut of the right boundary!";
+                buffer_pos_x = diearea.end_x - mctype_dict[operating_macro_name].width_x;
+            }
+            if (buffer_pos_y < diearea.init_y){
+                cout << "\tOut of the bottom boundary!";
+                buffer_pos_y = diearea.init_y;
+            }
+            else if (buffer_pos_y + mctype_dict[operating_macro_name].width_y > diearea.end_y){
+                cout << "\tOut of the top boundary!";
+                buffer_pos_y = diearea.end_y - mctype_dict[operating_macro_name].width_y;
+            }
+
+            bool overlap = false;
+            for(int overlap_itr = 0; overlap_itr != movable_macro.size(); overlap_itr++){
+                if (overlap_itr != macro_itr){ // 確認要檢查的macro不是自己，畢竟自己會跟自己重疊
+                    if (check_overlap(buffer_pos_x, buffer_pos_y, mctype_dict[operating_macro_name].width_x, mctype_dict[operating_macro_name].width_y, component_dict[movable_macro[overlap_itr]].pos_x, component_dict[movable_macro[overlap_itr]].pos_y, mctype_dict[component_dict[movable_macro[overlap_itr]].component_type].width_x, mctype_dict[component_dict[movable_macro[overlap_itr]].component_type].width_y)) {
+                        overlap = true;
+                        break;
+                    }
+                }
+            }
+            if (!overlap){
+                operating_macro->pos_x = buffer_pos_x; // pos_x: int?
+                operating_macro->pos_y = buffer_pos_y; // pos_y: int?
+                cout << "\t<- Update This Macro";
+            }
+            else
+                cout << "\tOverlap!";
+            cout << '\n';
         }
     }
+    time(&after_algo);
 
     /********** write output file **********/
     if(mlist2.is_open() && dmp.is_open()){
-        cout << "Write Output File";
+        cout << "Write Output File\n";
         dmp << fixed << setprecision(0);
         string cur_state = "INIT";
         vector<string> words, sec_words;
@@ -723,11 +741,11 @@ int main(int argc, char* argv[]){
                     for(int j=6; j<14; ++j){ // rest of the sentence
                         dmp << " ";
                         if(j==9)
-                            dmp << component_dict[available_macro[i]].pos_x; // pos_x
+                            dmp << component_dict[movable_macro[i]].pos_x; // pos_x
                         else if(j==10)
-                            dmp << component_dict[available_macro[i]].pos_y; // pos_y
+                            dmp << component_dict[movable_macro[i]].pos_y; // pos_y
                         else if(j==12){ // orientation
-                            orientation ori = component_dict[available_macro[i]].orient;
+                            orientation ori = component_dict[movable_macro[i]].orient;
                             if(ori == North)
                                 dmp << "N";
                             else if(ori == FlipNorth)
@@ -751,6 +769,14 @@ int main(int argc, char* argv[]){
         }
         mlist2.close();
         dmp.close();
+    }
+    time(&end);
+    double time_input = double(after_input-start);
+    double time_algo  = double(after_algo-after_input);
+    double time_whole = double(end-start);
+    if(CAL_TIME){
+        cout << "Time(input, algo, whole): " << fixed << time_input << " " << time_algo << " " << time_whole
+        << setprecision(3) << " sec\n";
     }
     return 0;
 }
