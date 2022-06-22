@@ -704,9 +704,9 @@ int main(int argc, char* argv[]){
 
 
 
-            // float move_distance_x =0, move_distance_y = 0;
+            // int move_distance_x =0, move_distance_y = 0;
             // if (optimal_total_displacement > MAX_DISPLACEMENT){
-            //    float xy_diff = abs(x_diff) - abs(y_diff);
+            //     float xy_diff = abs(x_diff) - abs(y_diff);
             //     float remain_displacement = (MAX_DISPLACEMENT - abs(xy_diff))/2;
 
             //     if (xy_diff >= MAX_DISPLACEMENT){
@@ -748,29 +748,50 @@ int main(int argc, char* argv[]){
             //     move_distance_x = int(floor(x_diff)) ;
             //     move_distance_y = int(floor(y_diff)) ;
             // }
-            // 
+            
             // bool overlap = true;
-            // bool finish_tuning = false;
-            // string mode = "tune_x";
-            // while (move_distance_x + move_distance_y > 0 && !finish_tuning){
-            // for(int overlap_itr = 0; overlap_itr != movable_macro.size(); overlap_itr++){
-            //     if (overlap_itr != macro_itr){ //確認要檢查的macro不是自己，畢竟自己會跟自己重疊
-            //         if (check_overlap(buffer_pos_x, buffer_pos_y, mctype_dict[operating_macro_name].width_x, mctype_dict[operating_macro_name].width_y, component_dict[movable_macro[overlap_itr]].pos_x, component_dict[movable_macro[overlap_itr]].pos_y, mctype_dict[component_dict[movable_macro[overlap_itr]].component_type].width_x, mctype_dict[component_dict[movable_macro[overlap_itr]].component_type].width_y)) {
-            //                overlap = true;
-            //                break;
-            //          }
-            //      }
-            // } 
+            // string mode = "initial";
+            // while (move_distance_x + move_distance_y > 0){
+            //     bool need_retuning = false;
+            //     for(int overlap_itr = 0; overlap_itr != movable_macro.size(); overlap_itr++){
+            //         if (overlap_itr != macro_itr){ //確認要檢查的macro不是自己，畢竟自己會跟自己重疊
+            //             if (check_overlap(buffer_pos_x, buffer_pos_y, mctype_dict[operating_macro_name].width_x, mctype_dict[operating_macro_name].width_y, component_dict[movable_macro[overlap_itr]].pos_x, component_dict[movable_macro[overlap_itr]].pos_y, mctype_dict[component_dict[movable_macro[overlap_itr]].component_type].width_x, mctype_dict[component_dict[movable_macro[overlap_itr]].component_type].width_y)) {
+            //                 if (mode == "initial") {
+            //                             move_distance_x = int(floor(move_distance_x/2));
+            //                             mode == "tune_y";
+            //                             need_retuning = true;
+            //                     }
+            //                 break;
+            //                 if (mode == "tune_y") {
+            //                             move_distance_x *= 2;
+            //                             move_distance_y = int(floor(move_distance_y/2));
+            //                             mode == "tune_x";
+            //                             need_retuning = true;
+            //                     }
+            //                 break;
+            //                 if (mode == "tune_x") {
+            //                             move_distance_x = int(floor(move_distance_x/4));
+            //                             mode == "tune_y";
+            //                             need_retuning = true;
+            //                     }
+            //                 break;
+            //             }
+            //         }
+            //     } 
+
+            //     if(!need_retuning){
+            //         overlap = false;
+            //         break;
+            //     }
             // }
-            // 
-            // 
-            // if (!overlap){
-            //     operating_macro->pos_x = move_distance_x + current_pos_x;
-            //     operating_macro->pos_y = move_distance_y + current_pos_y; 
-            //     cout << "\t<- Update This Macro";
-            // }
-            // else
-            //     cout << "\tOverlap!";
+            
+            if (!overlap){
+                operating_macro->pos_x = move_distance_x + current_pos_x;
+                operating_macro->pos_y = move_distance_y + current_pos_y; 
+                cout << "\t<- Update This Macro";
+            }
+            else
+                cout << "\tOverlap!";
 
 
 
