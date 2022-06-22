@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <limits>
+#include <climits>
 #include <ctype.h> // for isalpha()
 #include <cmath>
 
@@ -542,7 +542,7 @@ int main(int argc, char* argv[]){
     cout << "Determine Macro Location...\n";
     for (int iteration=0; iteration<ITERATION; iteration++){
         for (int macro_itr = 0; macro_itr != available_macro.size(); macro_itr++){
-            cout << "   Macro #" << macro_itr << '\n';
+            cout << "\tMacro #" << macro_itr;
             if (component_dict[available_macro[macro_itr]].movable){
                 float xaccum[4] = {0,0,0,0}; //N, FN, S, FS
                 float yaccum[4] = {0,0,0,0};
@@ -613,6 +613,7 @@ int main(int argc, char* argv[]){
                 float x_diff = optimal_pos_x - initial_pos_x;
                 float y_diff = optimal_pos_y - initial_pos_y;
                 float optimal_total_displacement = abs(x_diff) + abs(y_diff);
+                cout << "\tMove " << optimal_total_displacement << " without constraint. ";
                 float buffer_pos_x, buffer_pos_y; // buffer_pos_x, buffer_pos_y: int?
                 if (optimal_total_displacement > MAX_DISPLACEMENT){ // consider the constraint MAX_DISPLACEMENT
                     // 1. ratio method
@@ -677,7 +678,7 @@ int main(int argc, char* argv[]){
                     buffer_pos_y = diearea.end_y - mctype_dict[operating_macro_name].width_y;
 
                 bool overlap = false;
-                for(int overlap_itr = 0; macro_itr != available_macro.size(); macro_itr++){
+                for(int overlap_itr = 0; overlap_itr != available_macro.size(); overlap_itr++){
                     if (overlap_itr != macro_itr){ // 確認要檢查的macro不是自己，畢竟自己會跟自己重疊
                         if (check_overlap(buffer_pos_x, buffer_pos_y, mctype_dict[operating_macro_name].width_x, mctype_dict[operating_macro_name].width_y, component_dict[available_macro[overlap_itr]].pos_x, component_dict[available_macro[overlap_itr]].pos_y, mctype_dict[component_dict[available_macro[overlap_itr]].component_type].width_x, mctype_dict[component_dict[available_macro[overlap_itr]].component_type].width_y)) {
                             overlap = true;
@@ -688,15 +689,16 @@ int main(int argc, char* argv[]){
                 if (!overlap){
                     operating_macro->pos_x = buffer_pos_x; // pos_x: int?
                     operating_macro->pos_y = buffer_pos_y; // pos_y: int?
-                    cout<<"Update This Macro\n";
+                    cout << "\t<- Update This Macro";
                 }
+                cout << '\n';
             }
         }
     }
 
     /********** write output file **********/
     if(mlist2.is_open() && dmp.is_open()){
-        cout << "write output";
+        cout << "Write Output File";
         dmp << fixed << setprecision(0);
         string cur_state = "INIT";
         vector<string> words, sec_words;
