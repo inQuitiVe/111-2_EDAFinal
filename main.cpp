@@ -226,6 +226,7 @@ int main(int argc, char* argv[]){
 
     /********** read input files **********/
     // readInputFile(def, def_state);
+    cout << "Read Input Files\n";
     if(def.is_open()){
         string cur_state = "INIT";
         vector<string> words, sec_words, third_words;
@@ -538,8 +539,10 @@ int main(int argc, char* argv[]){
     
 
     /********** determine final Macro location **********/
+    cout << "Determine Macro Location...\n";
     for (int iteration=0; iteration<ITERATION; iteration++){
         for (int macro_itr = 0; macro_itr != available_macro.size(); macro_itr++){
+            cout << "   Macro #" << macro_itr << '\n';
             if (component_dict[available_macro[macro_itr]].movable){
                 float xaccum[4] = {0,0,0,0}; //N, FN, S, FS
                 float yaccum[4] = {0,0,0,0};
@@ -685,6 +688,7 @@ int main(int argc, char* argv[]){
                 if (!overlap){
                     operating_macro->pos_x = buffer_pos_x; // pos_x: int?
                     operating_macro->pos_y = buffer_pos_y; // pos_y: int?
+                    cout<<"Update This Macro\n";
                 }
             }
         }
@@ -692,6 +696,7 @@ int main(int argc, char* argv[]){
 
     /********** write output file **********/
     if(mlist2.is_open() && dmp.is_open()){
+        cout << "write output";
         dmp << fixed << setprecision(0);
         string cur_state = "INIT";
         vector<string> words, sec_words;
