@@ -16,7 +16,7 @@
 #include <time.h>
 
 #define MACRO_ITERATION 1
-#define INIT_ITERATION 20
+#define INIT_ITERATION 2
 #define primary_mul 100
 #define CAL_TIME 1 // set to 0 if don't want to measure execution time
 
@@ -105,6 +105,7 @@ void handle_overlap(bool *finish_boundary, float *move_distance_x, float *move_d
 
     if (check_overlap(a_pos_x, a_pos_y, a_width_x, a_width_y, b_pos_x, b_pos_y, b_width_x, b_width_y))
     {
+        cout << "\toverlap";    
         if (b_pos_x - current_pos_x > 0)
         {
             x_max = b_left_bound - current_right_bound;
@@ -903,7 +904,7 @@ int main(int argc, char *argv[])
             float x_diff = optimal_pos_x - initial_pos_x;
             float y_diff = optimal_pos_y - initial_pos_y;
             float optimal_total_displacement = abs(x_diff) + abs(y_diff);
-            cout << "\tMove " << optimal_total_displacement << ". (without constraint)";
+            cout << "\tMove " << optimal_total_displacement << " (without constraint)";
 
             float move_distance_x = 0.0, move_distance_y = 0.0;
             // determine move distance x and y
@@ -940,7 +941,7 @@ int main(int argc, char *argv[])
                 move_distance_y = floor(y_diff);
             }
 
-            bool overlap = true;
+            bool overlap = false;
             float buffer_pos_x, buffer_pos_y;
 
             for (int i = 0; i < 100; i++)
