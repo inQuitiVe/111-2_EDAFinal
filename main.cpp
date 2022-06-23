@@ -629,162 +629,159 @@ int main(int argc, char* argv[]){
             float y_diff = optimal_pos_y - current_pos_y;
             float optimal_total_displacement = abs(x_diff) + abs(y_diff);
             cout << "\tMove " << optimal_total_displacement << " without constraint. ";
-            float buffer_pos_x, buffer_pos_y; // buffer_pos_x, buffer_pos_y: int?
-            if (optimal_total_displacement > MAX_DISPLACEMENT){ // consider the constraint MAX_DISPLACEMENT
-                cout << "\tConsider constraint: ";
-                // 1. ratio method
-                /*
-                float ratio = MAX_DISPLACEMENT/optimal_total_displacement;
-                buffer_pos_x = int(floor(x_diff * ratio)) + current_pos_x;
-                buffer_pos_y = int(floor(y_diff * ratio)) + current_pos_y;
-                */
+            // float buffer_pos_x, buffer_pos_y; // buffer_pos_x, buffer_pos_y: int?
+            // if (optimal_total_displacement > MAX_DISPLACEMENT){ // consider the constraint MAX_DISPLACEMENT
+            //     cout << "\tConsider constraint: ";
+            //     // 1. ratio method
+            //     /*
+            //     float ratio = MAX_DISPLACEMENT/optimal_total_displacement;
+            //     buffer_pos_x = int(floor(x_diff * ratio)) + current_pos_x;
+            //     buffer_pos_y = int(floor(y_diff * ratio)) + current_pos_y;
+            //     */
                 
-                // 2. move the macro to the position with the same x&y remaining distance first, then move macro along x&y axis with equal step
-                float xy_diff = abs(x_diff) - abs(y_diff);
-                float remain_displacement = (MAX_DISPLACEMENT - abs(xy_diff))/2;
-
-                if (xy_diff >= MAX_DISPLACEMENT){
-                    if (x_diff > 0)
-                        buffer_pos_x = current_pos_x + MAX_DISPLACEMENT;
-                    else
-                        buffer_pos_x = current_pos_x - MAX_DISPLACEMENT;
-                    buffer_pos_y = current_pos_y;
-                }
-                else if (xy_diff <= -1*MAX_DISPLACEMENT){
-                    if (y_diff > 0)
-                        buffer_pos_y = current_pos_y + MAX_DISPLACEMENT;
-                    else
-                        buffer_pos_y = current_pos_y - MAX_DISPLACEMENT;
-                    buffer_pos_x = current_pos_x;
-                }
-                else if (xy_diff > 0){
-                    if (x_diff > 0)
-                        buffer_pos_x = current_pos_x + int(floor(xy_diff + remain_displacement));
-                    else
-                        buffer_pos_x = current_pos_x - int(floor(xy_diff + remain_displacement));
-                    if (y_diff > 0)
-                        buffer_pos_y = current_pos_y + int(floor(remain_displacement));
-                    else
-                        buffer_pos_y = current_pos_y - int(floor(remain_displacement));
-                }
-                else{
-                    if (y_diff > 0)
-                        buffer_pos_y = current_pos_y + int(floor(abs(xy_diff) + remain_displacement));
-                    else
-                        buffer_pos_y = current_pos_y - int(floor(abs(xy_diff) + remain_displacement));
-                    if (x_diff > 0)
-                        buffer_pos_x = current_pos_x + int(floor(remain_displacement));
-                    else
-                        buffer_pos_x = current_pos_x - int(floor(remain_displacement));
-                }
-            }
-            else{ // directly move the macro to the optimal position
-                buffer_pos_x = int(floor(x_diff)) + current_pos_x;
-                buffer_pos_y = int(floor(y_diff)) + current_pos_y;
-            }
-
-            // check if the macro is in the boundary of the chip and modify the position if it is not
-            if (buffer_pos_x < diearea.init_x){
-                cout << "\tOut of the left boundary!";
-                buffer_pos_x = diearea.init_x;
-            }
-            else if (buffer_pos_x + mctype_dict[operating_macro_name].width_x > diearea.end_x){
-                cout << "\tOut of the right boundary!";
-                buffer_pos_x = diearea.end_x - mctype_dict[operating_macro_name].width_x;
-            }
-            if (buffer_pos_y < diearea.init_y){
-                cout << "\tOut of the bottom boundary!";
-                buffer_pos_y = diearea.init_y;
-            }
-            else if (buffer_pos_y + mctype_dict[operating_macro_name].width_y > diearea.end_y){
-                cout << "\tOut of the top boundary!";
-                buffer_pos_y = diearea.end_y - mctype_dict[operating_macro_name].width_y;
-            }
-
-
-
-
-            // int move_distance_x =0, move_distance_y = 0;
-            // if (optimal_total_displacement > MAX_DISPLACEMENT){
+            //     // 2. move the macro to the position with the same x&y remaining distance first, then move macro along x&y axis with equal step
             //     float xy_diff = abs(x_diff) - abs(y_diff);
             //     float remain_displacement = (MAX_DISPLACEMENT - abs(xy_diff))/2;
 
             //     if (xy_diff >= MAX_DISPLACEMENT){
             //         if (x_diff > 0)
-            //             move_distance_x =  + MAX_DISPLACEMENT;
+            //             buffer_pos_x = current_pos_x + MAX_DISPLACEMENT;
             //         else
-            //             move_distance_x =  - MAX_DISPLACEMENT;
-            //         move_distance_y = 0;
+            //             buffer_pos_x = current_pos_x - MAX_DISPLACEMENT;
+            //         buffer_pos_y = current_pos_y;
             //     }
             //     else if (xy_diff <= -1*MAX_DISPLACEMENT){
             //         if (y_diff > 0)
-            //             move_distance_y =  + MAX_DISPLACEMENT;
+            //             buffer_pos_y = current_pos_y + MAX_DISPLACEMENT;
             //         else
-            //             move_distance_y =  - MAX_DISPLACEMENT;
-            //         move_distance_x = 0;
+            //             buffer_pos_y = current_pos_y - MAX_DISPLACEMENT;
+            //         buffer_pos_x = current_pos_x;
             //     }
             //     else if (xy_diff > 0){
             //         if (x_diff > 0)
-            //             move_distance_x =  + int(floor(xy_diff + remain_displacement));
+            //             buffer_pos_x = current_pos_x + int(floor(xy_diff + remain_displacement));
             //         else
-            //             move_distance_x =  - int(floor(xy_diff + remain_displacement));
+            //             buffer_pos_x = current_pos_x - int(floor(xy_diff + remain_displacement));
             //         if (y_diff > 0)
-            //             move_distance_y =  + int(floor(remain_displacement));
+            //             buffer_pos_y = current_pos_y + int(floor(remain_displacement));
             //         else
-            //             move_distance_y =  - int(floor(remain_displacement));
+            //             buffer_pos_y = current_pos_y - int(floor(remain_displacement));
             //     }
             //     else{
             //         if (y_diff > 0)
-            //             move_distance_y =  + int(floor(abs(xy_diff) + remain_displacement));
+            //             buffer_pos_y = current_pos_y + int(floor(abs(xy_diff) + remain_displacement));
             //         else
-            //             move_distance_y =  - int(floor(abs(xy_diff) + remain_displacement));
+            //             buffer_pos_y = current_pos_y - int(floor(abs(xy_diff) + remain_displacement));
             //         if (x_diff > 0)
-            //             move_distance_x =  + int(floor(remain_displacement));
+            //             buffer_pos_x = current_pos_x + int(floor(remain_displacement));
             //         else
-            //             move_distance_x =  - int(floor(remain_displacement));
+            //             buffer_pos_x = current_pos_x - int(floor(remain_displacement));
             //     }
             // }
             // else{ // directly move the macro to the optimal position
-            //     move_distance_x = int(floor(x_diff)) ;
-            //     move_distance_y = int(floor(y_diff)) ;
+            //     buffer_pos_x = int(floor(x_diff)) + current_pos_x;
+            //     buffer_pos_y = int(floor(y_diff)) + current_pos_y;
             // }
-            
-            // bool overlap = true;
-            // string mode = "initial";
-            // while (move_distance_x + move_distance_y > 0){
-            //     bool need_retuning = false;
-            //     for(int overlap_itr = 0; overlap_itr != movable_macro.size(); overlap_itr++){
-            //         if (overlap_itr != macro_itr){ //確認要檢查的macro不是自己，畢竟自己會跟自己重疊
-            //             if (check_overlap(buffer_pos_x, buffer_pos_y, mctype_dict[operating_macro_name].width_x, mctype_dict[operating_macro_name].width_y, component_dict[movable_macro[overlap_itr]].pos_x, component_dict[movable_macro[overlap_itr]].pos_y, mctype_dict[component_dict[movable_macro[overlap_itr]].component_type].width_x, mctype_dict[component_dict[movable_macro[overlap_itr]].component_type].width_y)) {
-            //                 if (mode == "initial") {
-            //                             move_distance_x = int(floor(move_distance_x/2));
-            //                             mode == "tune_y";
-            //                             need_retuning = true;
-            //                     }
-            //                 break;
-            //                 if (mode == "tune_y") {
-            //                             move_distance_x *= 2;
-            //                             move_distance_y = int(floor(move_distance_y/2));
-            //                             mode == "tune_x";
-            //                             need_retuning = true;
-            //                     }
-            //                 break;
-            //                 if (mode == "tune_x") {
-            //                             move_distance_x = int(floor(move_distance_x/4));
-            //                             mode == "tune_y";
-            //                             need_retuning = true;
-            //                     }
-            //                 break;
-            //             }
-            //         }
-            //     } 
 
-            //     if(!need_retuning){
-            //         overlap = false;
-            //         break;
-            //     }
-            // }
+            int move_distance_x =0, move_distance_y = 0;
+            if (optimal_total_displacement > MAX_DISPLACEMENT){
+                float xy_diff = abs(x_diff) - abs(y_diff);
+                float remain_displacement = (MAX_DISPLACEMENT - abs(xy_diff))/2;
+
+                if (xy_diff >= MAX_DISPLACEMENT){
+                    if (x_diff > 0)
+                        move_distance_x =  + MAX_DISPLACEMENT;
+                    else
+                        move_distance_x =  - MAX_DISPLACEMENT;
+                    move_distance_y = 0;
+                }
+                else if (xy_diff <= -1*MAX_DISPLACEMENT){
+                    if (y_diff > 0)
+                        move_distance_y =  + MAX_DISPLACEMENT;
+                    else
+                        move_distance_y =  - MAX_DISPLACEMENT;
+                    move_distance_x = 0;
+                }
+                else if (xy_diff > 0){
+                    if (x_diff > 0)
+                        move_distance_x =  + int(floor(xy_diff + remain_displacement));
+                    else
+                        move_distance_x =  - int(floor(xy_diff + remain_displacement));
+                    if (y_diff > 0)
+                        move_distance_y =  + int(floor(remain_displacement));
+                    else
+                        move_distance_y =  - int(floor(remain_displacement));
+                }
+                else{
+                    if (y_diff > 0)
+                        move_distance_y =  + int(floor(abs(xy_diff) + remain_displacement));
+                    else
+                        move_distance_y =  - int(floor(abs(xy_diff) + remain_displacement));
+                    if (x_diff > 0)
+                        move_distance_x =  + int(floor(remain_displacement));
+                    else
+                        move_distance_x =  - int(floor(remain_displacement));
+                }
+            }
+            else{ // directly move the macro to the optimal position
+                move_distance_x = int(floor(x_diff)) ;
+                move_distance_y = int(floor(y_diff)) ;
+            }
             
+            bool overlap = true;
+            string mode = "initial";
+            while (move_distance_x + move_distance_y > 0){
+                bool need_retuning = false;
+                for(int overlap_itr = 0; overlap_itr != movable_macro.size(); overlap_itr++){
+                    if (overlap_itr != macro_itr){ //確認要檢查的macro不是自己，畢竟自己會跟自己重疊
+                        if (check_overlap(move_distance_x+current_pos_x, move_distance_y+current_pos_y, mctype_dict[operating_macro_name].width_x, mctype_dict[operating_macro_name].width_y, component_dict[movable_macro[overlap_itr]].pos_x, component_dict[movable_macro[overlap_itr]].pos_y, mctype_dict[component_dict[movable_macro[overlap_itr]].component_type].width_x, mctype_dict[component_dict[movable_macro[overlap_itr]].component_type].width_y)) {
+                            if (mode == "initial") {
+                                        move_distance_x = int(floor(move_distance_x/2));
+                                        mode == "tune_y";
+                                        need_retuning = true;
+                                }
+                            break;
+                            if (mode == "tune_y") {
+                                        move_distance_x *= 2;
+                                        move_distance_y = int(floor(move_distance_y/2));
+                                        mode == "tune_x";
+                                        need_retuning = true;
+                                }
+                            break;
+                            if (mode == "tune_x") {
+                                        move_distance_x = int(floor(move_distance_x/4));
+                                        mode == "tune_y";
+                                        need_retuning = true;
+                                }
+                            break;
+                        }
+                    }
+                } 
+
+                if(!need_retuning){
+                    overlap = false;
+                    break;
+                }
+            }
+            
+            // // check if the macro is in the boundary of the chip and modify the position if it is not
+            // if (buffer_pos_x < diearea.init_x){
+            //     cout << "\tOut of the left boundary!";
+            //     buffer_pos_x = diearea.init_x;
+            // }
+            // else if (buffer_pos_x + mctype_dict[operating_macro_name].width_x > diearea.end_x){
+            //     cout << "\tOut of the right boundary!";
+            //     buffer_pos_x = diearea.end_x - mctype_dict[operating_macro_name].width_x;
+            // }
+            // if (buffer_pos_y < diearea.init_y){
+            //     cout << "\tOut of the bottom boundary!";
+            //     buffer_pos_y = diearea.init_y;
+            // }
+            // else if (buffer_pos_y + mctype_dict[operating_macro_name].width_y > diearea.end_y){
+            //     cout << "\tOut of the top boundary!";
+            //     buffer_pos_y = diearea.end_y - mctype_dict[operating_macro_name].width_y;
+            // }
+
             if (!overlap){
                 operating_macro->pos_x = move_distance_x + current_pos_x;
                 operating_macro->pos_y = move_distance_y + current_pos_y; 
@@ -792,13 +789,6 @@ int main(int argc, char* argv[]){
             }
             else
                 cout << "\tOverlap!";
-
-
-
-
-            operating_macro->pos_x = buffer_pos_x; // pos_x: int?
-            operating_macro->pos_y = buffer_pos_y; // pos_y: int?
-            
             cout << '\n';
             return 0;
         }
