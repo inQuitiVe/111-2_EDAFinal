@@ -714,7 +714,6 @@ int main(int argc, char *argv[])
     }
     time(&after_input);
 
-    // Q: how many iterations do we need?
     /********** estimate standard cell location (PI and PO already fixed) **********/
     cout << "Determine STD Location...\n";
     for (int init_iter = 0; init_iter < INIT_ITERATION; init_iter++)
