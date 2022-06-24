@@ -17,8 +17,9 @@
 
 #define MACRO_ITERATION 1
 #define INIT_ITERATION 2
-#define primary_mul 100
-#define CAL_TIME 1 // set to 0 if don't want to measure execution time
+#define primary_mul 1
+#define CAL_TIME 1     // set to 0 if don't want to measure execution time
+#define SHOW_MESSAGE 1 // set to 0 if don't want to see detail info
 
 using namespace std;
 typedef pair<float, float> float_pair;
@@ -105,7 +106,8 @@ void handle_overlap(bool *finish_boundary, float *move_distance_x, float *move_d
 
     if (check_overlap(a_pos_x, a_pos_y, a_width_x, a_width_y, b_pos_x, b_pos_y, b_width_x, b_width_y))
     {
-        cout << "\toverlap";    
+        if(SHOW_MESSAGE)
+            cout << "\toverlap";
         if (b_pos_x - current_pos_x > 0)
         {
             x_max = b_left_bound - current_right_bound;
@@ -334,12 +336,12 @@ int main(int argc, char *argv[])
     Rect diearea(0, 0, 0, 0);
 
     /********** variables related to time **********/
-    time_t start, after_input, after_algo, end;
+    time_t start, after_input, after_std, after_macro, end;
 
     /********** read input files **********/
     // readInputFile(def, def_state);
     time(&start);
-    cout << "Read Input Files\n";
+    cout << "Read Input Files...\n";
     if (def.is_open())
     {
         string cur_state = "INIT";
@@ -717,16 +719,19 @@ int main(int argc, char *argv[])
 
     /********** estimate standard cell location (PI and PO already fixed) **********/
     cout << "Determine STD Location...\n";
+    bool show_first_std = true; // only show info about first std
     for (int init_iter = 0; init_iter < INIT_ITERATION; init_iter++)
     {
         cout << "num_iter: " << init_iter << "\n";
+        show_first_std = true;
         for (int std_itr = 0; std_itr != all_component.size(); std_itr++)
         {
-            cout << "\tSTD_cell #" << std_itr;
             int std_accum_num = 0;
             float std_xaccum = 0.0;
             float std_yaccum = 0.0;
             string opearting_std_name = all_component[std_itr];
+            if(SHOW_MESSAGE && show_first_std)
+                cout << "\tSTD_cell #" << std_itr << "\t" << opearting_std_name;
             if (is_macro.find(opearting_std_name) == is_macro.end())
             { // only run if current component is standard cell
                 Component *operating_std = &component_dict[opearting_std_name];
@@ -746,11 +751,12 @@ int main(int argc, char *argv[])
                     transorient(origin, std_size, connect_pin.pos_list[0], operating_std->orient, std_pin_relative_pos);
 
                     if (is_primary_io.find(connect_wire) != is_primary_io.end())
-                    { // pin is PI/PO, TODO: modify weight to very large
-                        cout << "IO add " << (pin_dict[connect_wire].pos_list[0].first - std_pin_relative_pos[0]) << "\t";
+                    { // pin is PI/PO
+                        if(SHOW_MESSAGE && show_first_std)
+                            cout << "IO add " << (pin_dict[connect_wire].pos_list[0].first - std_pin_relative_pos[0]) << "\t";
                         std_xaccum += (pin_dict[connect_wire].pos_list[0].first - std_pin_relative_pos[0]) * primary_mul;
                         std_yaccum += (pin_dict[connect_wire].pos_list[0].second - std_pin_relative_pos[1]) * primary_mul;
-                        std_accum_num+=  primary_mul;
+                        std_accum_num += primary_mul;
                     }
 
                     for (int desti_idx = 0; desti_idx != wire_to_all_connections.size(); desti_idx++)
@@ -771,6 +777,7 @@ int main(int argc, char *argv[])
                         transorient(component_pos, component_size, desti_pin.pos_list[0], desti_component.orient, pin_abs_pos);
 
                         // 相對距離 = 接到的pin的絕對位置 - 相對macro的pin位置
+                        // TODO: modify the weight of macro
                         std_xaccum += (pin_abs_pos[0] - std_pin_relative_pos[0]);
                         std_yaccum += (pin_abs_pos[1] - std_pin_relative_pos[1]);
                         std_accum_num++;
@@ -784,21 +791,34 @@ int main(int argc, char *argv[])
                 orientation optimal_orient = operating_std->orient; // do not modify orientation
                 int current_std_pos_x = int(operating_std->pos_x);  // only for debug usage
                 int current_std_pos_y = int(operating_std->pos_y);
-
-                cout << "\n\toriginal_std_pos_x:" << current_std_pos_x << ' ' << "\toriginal_std_pos_y: " << current_std_pos_y << '\n';
-                cout << "\n\toptimal_std_pos_x:" << optimal_std_pos_x << ' ' << "\toptimal_std_pos_y: " << optimal_std_pos_y << '\n';
-                cout << "\toptimal_orient: " << optimal_orient; // same as original orient
-
                 float x_diff = optimal_std_pos_x - current_std_pos_x;
-                float y_diff = optimal_std_pos_y - current_std_pos_x;
+                float y_diff = optimal_std_pos_y - current_std_pos_y;
                 float optimal_total_displacement = abs(x_diff) + abs(y_diff);
-                cout << "\tSTD Moving " << optimal_total_displacement;
+                // TODO: check if optimal position exceeds boundary (not sure)
+                if ((optimal_std_pos_x < diearea.init_x) || (optimal_std_pos_x + mctype_dict[operating_std_type_name].width_x > diearea.end_x)
+                || (optimal_std_pos_y < diearea.init_y) || (optimal_std_pos_y + mctype_dict[operating_std_type_name].width_y > diearea.end_y))
+                {
+                    // cout << "STD cell #" << std_itr << " moves out of boundary!\n";
+                    // restore position
+                    optimal_std_pos_x = current_std_pos_x;
+                    optimal_std_pos_y = current_std_pos_y;
+                }
+                
+                if(SHOW_MESSAGE && show_first_std){
+                    cout << "\n\toriginal_std_pos_x:" << current_std_pos_x << ' ' << "\toriginal_std_pos_y: " << current_std_pos_y << '\n';
+                    cout << "\toptimal_std_pos_x:" << optimal_std_pos_x << ' ' << "\toptimal_std_pos_y: " << optimal_std_pos_y << '\n';
+                    cout << "\toptimal_orient: " << optimal_orient; // same as original orient
+                    cout << "\tSTD Moving " << optimal_total_displacement << "\n";
+                    show_first_std = false;
+                }
+                
                 // operating_std->orient = optimal_orient;
                 operating_std->pos_x = optimal_std_pos_x;
                 operating_std->pos_y = optimal_std_pos_y;
             }
         }
     }
+    time(&after_std);
 
     /********** determine final Macro location **********/
     cout << "Determine Macro Location...\n";
@@ -807,7 +827,6 @@ int main(int argc, char *argv[])
         cout << "num_iter: " << iteration << "\n";
         for (int macro_itr = 0; macro_itr != movable_macro.size(); macro_itr++)
         {
-            cout << "\tMacro #" << macro_itr;
             int accum_num = 0;
             float xaccum[4] = {0, 0, 0, 0}; // N, FN, S, FS
             float yaccum[4] = {0, 0, 0, 0};
@@ -815,6 +834,8 @@ int main(int argc, char *argv[])
             Component *operating_macro = &component_dict[operating_macro_name];
             string operating_macro_type = operating_macro->component_type;
             vector<pair<string, string>> operating_connection = operating_macro->pin_connection;
+            if(SHOW_MESSAGE)
+                cout << "\tMacro #" << macro_itr << "\t" << operating_macro_name;
             for (int pin_idx = 0; pin_idx < operating_connection.size(); pin_idx++)
             {
                 string connect_pin = operating_connection[pin_idx].first;
@@ -835,7 +856,8 @@ int main(int argc, char *argv[])
                 { // pin is PI/PO
                     for (int i = 0; i < 4; i++)
                     {
-                        cout << "IO add " << (pin_dict[connect_wire].pos_list[0].first - macro_pin_relative_pos[i][0]) << "\t";
+                        if(SHOW_MESSAGE)
+                            cout << "IO add " << (pin_dict[connect_wire].pos_list[0].first - macro_pin_relative_pos[i][0]) << "\t";
                         xaccum[i] += (pin_dict[connect_wire].pos_list[0].first - macro_pin_relative_pos[i][0]);
                         yaccum[i] += (pin_dict[connect_wire].pos_list[0].second - macro_pin_relative_pos[i][1]);
                     }
@@ -898,13 +920,14 @@ int main(int argc, char *argv[])
                 }
             }
             operating_macro->orient = optimal_orient;
-            cout << "\n\toptimal_pos_x:" << optimal_pos_x << ' ' << "\toptimal_pos_y: " << optimal_pos_y << '\n';
-            cout << "\toptimal_orient: " << optimal_orient;
-
             float x_diff = optimal_pos_x - initial_pos_x;
             float y_diff = optimal_pos_y - initial_pos_y;
             float optimal_total_displacement = abs(x_diff) + abs(y_diff);
-            cout << "\tMove " << optimal_total_displacement << " (without constraint)";
+            if(SHOW_MESSAGE){
+                cout << "\n\toptimal_pos_x:" << optimal_pos_x << ' ' << "\toptimal_pos_y: " << optimal_pos_y << '\n';
+                cout << "\toptimal_orient: " << optimal_orient;
+                cout << "\tMove " << optimal_total_displacement << " (without constraint)\n";
+            }
 
             float move_distance_x = 0.0, move_distance_y = 0.0;
             // determine move distance x and y
@@ -988,12 +1011,12 @@ int main(int argc, char *argv[])
             operating_macro->pos_y = int(floor(move_distance_y)) + initial_pos_y;
         }
     }
-    time(&after_algo);
+    time(&after_macro);
 
     /********** write output file **********/
     if (mlist2.is_open() && dmp.is_open())
     {
-        cout << "Write Output File\n";
+        cout << "Write Output File...\n";
         dmp << fixed << setprecision(0);
         string cur_state = "INIT";
         vector<string> words, sec_words;
@@ -1057,12 +1080,13 @@ int main(int argc, char *argv[])
     }
     time(&end);
     double time_input = double(after_input - start);
-    double time_algo = double(after_algo - after_input);
+    double time_std = double(after_std - after_input);
+    double time_macro = double(after_macro - after_std);
     double time_whole = double(end - start);
     if (CAL_TIME)
     {
-        cout << "Time(input, algo, whole): " << fixed << time_input << " " << time_algo << " " << time_whole
-             << setprecision(3) << " sec\n";
+        cout << "Time(input, std, macro, whole): " << fixed << "(" << time_input << ", " << time_std << ", "
+             << time_macro << ", " << time_whole << ")" << setprecision(3) << " sec\n";
     }
     return 0;
 }
