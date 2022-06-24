@@ -1,12 +1,10 @@
 # 111-2_EDAFinal
-//describes what are included in the zip file and provides necessary information to reproduce your results (e.g., how to compile and run your program, etc.)
+
 Files In The Zip File:
     - this README file
     - slides
     - report
-    - source code and test cases
-    - (other supplemental materials)
-        - 
+    - source code (cases are too large to be included)
 
 How To Compile:
 g++ main.cpp -o DMP
