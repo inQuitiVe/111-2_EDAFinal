@@ -470,6 +470,8 @@ int main(int argc, char *argv[])
 
                     component_dict[words[4]].pos_x = stof(sec_words[9]);  // update pos_x
                     component_dict[words[4]].pos_y = stof(sec_words[10]); // update pos_y
+                    component_dict[words[4]].init_pos_x = stof(sec_words[9]);  // update pos_x
+                    component_dict[words[4]].init_pos_y = stof(sec_words[10]); // update pos_y
                     // need to update the orientation ??
                     all_macro.push_back(words[4]);
                     is_macro[words[4]] = true;
